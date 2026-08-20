@@ -64,6 +64,16 @@ class TravelDeparture(models.Model):
         "departure_id",
         string="Harga per Tipe Kamar",
     )
+    flight_ids = fields.One2many(
+        "travel.departure.flight",
+        "departure_id",
+        string="Itinerary Penerbangan",
+    )
+    accommodation_ids = fields.One2many(
+        "travel.departure.accommodation",
+        "departure_id",
+        string="Itinerary Akomodasi",
+    )
     active = fields.Boolean(string="Aktif", default=True)
 
     @api.depends("package_id.code", "departure_date")
@@ -125,6 +135,18 @@ class TravelDeparture(models.Model):
                     _(
                         "Harga kamar belum lengkap. Tambahkan harga untuk: %(rooms)s.",
                         rooms=missing_labels,
+                    )
+                )
+            invalid_stays = departure.accommodation_ids.filtered(
+                lambda stay: stay.check_in < departure.departure_date
+                or stay.check_out > departure.return_date
+            )
+            if invalid_stays:
+                raise UserError(
+                    _(
+                        "Akomodasi harus berada dalam rentang %(start)s sampai %(end)s.",
+                        start=departure.departure_date,
+                        end=departure.return_date,
                     )
                 )
         self.with_context(_travel_allow_state_change=True).write({"state": "open"})
