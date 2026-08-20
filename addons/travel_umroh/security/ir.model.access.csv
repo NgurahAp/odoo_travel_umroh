@@ -11,3 +11,9 @@ access_travel_hotel_manager,travel.hotel.manager,model_travel_hotel,group_travel
 access_travel_package_staff,travel.package.staff,model_travel_package,group_travel_staff,1,0,0,0
 access_travel_package_finance,travel.package.finance,model_travel_package,group_travel_finance,1,0,0,0
 access_travel_package_manager,travel.package.manager,model_travel_package,group_travel_manager,1,1,1,1
+access_travel_departure_staff,travel.departure.staff,model_travel_departure,group_travel_staff,1,0,0,0
+access_travel_departure_finance,travel.departure.finance,model_travel_departure,group_travel_finance,1,0,0,0
+access_travel_departure_manager,travel.departure.manager,model_travel_departure,group_travel_manager,1,1,1,1
+access_travel_departure_price_staff,travel.departure.price.staff,model_travel_departure_price,group_travel_staff,1,0,0,0
+access_travel_departure_price_finance,travel.departure.price.finance,model_travel_departure_price,group_travel_finance,1,0,0,0
+access_travel_departure_price_manager,travel.departure.price.manager,model_travel_departure_price,group_travel_manager,1,1,1,1
