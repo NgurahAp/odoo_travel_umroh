@@ -1,3 +1,4 @@
+from . import res_users
 from . import travel_airline
 from . import travel_airport
 from . import travel_departure

@@ -1,3 +1,5 @@
+from lxml import etree
+
 from odoo import Command
 from odoo.exceptions import AccessError
 from odoo.tests import tagged
@@ -161,6 +163,92 @@ class TestTravelSecurity(TravelUmrohCase):
             "travel.departure.flight": {"flight_number": "SV-002"},
             "travel.departure.accommodation": {"sequence": 20},
         }
+
+    def test_existing_travel_groups_are_exposed_as_single_role(self):
+        self.assertIn("travel_umroh_role", self.env["res.users"]._fields)
+        self.assertEqual(self.staff.travel_umroh_role, "staff")
+        self.assertEqual(self.finance.travel_umroh_role, "finance")
+        self.assertEqual(self.manager.travel_umroh_role, "manager")
+        self.assertFalse(self.internal_user.travel_umroh_role)
+
+    def test_writing_travel_role_replaces_travel_group_membership(self):
+        role_field = self.env["res.users"]._fields["travel_umroh_role"]
+        self.assertTrue(role_field.inverse)
+
+        staff_group = self.env.ref("travel_umroh.group_travel_staff")
+        finance_group = self.env.ref("travel_umroh.group_travel_finance")
+        manager_group = self.env.ref("travel_umroh.group_travel_manager")
+        internal_group = self.env.ref("base.group_user")
+        user = self.internal_user
+        cases = (
+            ("staff", {staff_group}),
+            ("finance", {finance_group}),
+            ("manager", {staff_group, finance_group, manager_group}),
+            (False, set()),
+        )
+
+        for role, expected_travel_groups in cases:
+            with self.subTest(role=role):
+                user.write({"travel_umroh_role": role})
+                self.assertEqual(user.travel_umroh_role, role)
+                self.assertIn(internal_group, user.groups_id)
+                self.assertEqual(
+                    set(user.groups_id) & {staff_group, finance_group, manager_group},
+                    expected_travel_groups,
+                )
+
+    def test_create_internal_user_with_travel_role_assigns_groups(self):
+        user = self.env["res.users"].create(
+            {
+                "name": "Created Travel Manager",
+                "login": "phase1-created-manager",
+                "email": "phase1-created-manager@example.test",
+                "groups_id": [Command.set([self.env.ref("base.group_user").id])],
+                "travel_umroh_role": "manager",
+            }
+        )
+
+        self.assertEqual(user.travel_umroh_role, "manager")
+        self.assertIn(self.env.ref("base.group_user"), user.groups_id)
+        self.assertIn(self.env.ref("travel_umroh.group_travel_staff"), user.groups_id)
+        self.assertIn(self.env.ref("travel_umroh.group_travel_finance"), user.groups_id)
+        self.assertIn(self.env.ref("travel_umroh.group_travel_manager"), user.groups_id)
+
+    def test_settings_user_form_exposes_travel_role_without_debug(self):
+        settings_admin = self._create_user("settings-admin", None)
+        settings_admin.groups_id = [
+            Command.link(self.env.ref("base.group_system").id)
+        ]
+
+        view = (
+            self.env["res.users"]
+            .with_user(settings_admin)
+            .with_context(debug=False)
+            .get_view(
+                view_id=self.env.ref("base.view_users_form").id,
+                view_type="form",
+            )
+        )
+        arch = etree.fromstring(view["arch"].encode())
+
+        self.assertEqual(
+            len(
+                arch.xpath(
+                    "//page[@name='access_rights']"
+                    "//field[@name='travel_umroh_role']"
+                )
+            ),
+            1,
+        )
+
+    def test_staff_cannot_read_or_change_own_travel_role(self):
+        with self.assertRaises(AccessError):
+            self.staff.with_user(self.staff).read(["travel_umroh_role"])
+
+        with self.assertRaises(AccessError):
+            self.staff.with_user(self.staff).write(
+                {"travel_umroh_role": "manager"}
+            )
 
     def test_staff_and_finance_are_read_only_on_all_phase_one_models(self):
         create_values = self._create_values("READONLY")
