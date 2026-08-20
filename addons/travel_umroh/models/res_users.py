@@ -14,6 +14,11 @@ class ResUsers(models.Model):
         compute="_compute_travel_umroh_role",
         inverse="_inverse_travel_umroh_role",
         groups="base.group_system",
+        help=(
+            "Select one Travel Umroh role. Existing users with both Staff and "
+            "Finance assigned directly remain unselected until an administrator "
+            "chooses the intended role."
+        ),
     )
 
     @api.depends("groups_id")
@@ -22,11 +27,13 @@ class ResUsers(models.Model):
         finance_group = self.env.ref("travel_umroh.group_travel_finance")
         manager_group = self.env.ref("travel_umroh.group_travel_manager")
         for user in self:
+            has_staff = staff_group in user.groups_id
+            has_finance = finance_group in user.groups_id
             if manager_group in user.groups_id:
                 user.travel_umroh_role = "manager"
-            elif staff_group in user.groups_id:
+            elif has_staff and not has_finance:
                 user.travel_umroh_role = "staff"
-            elif finance_group in user.groups_id:
+            elif has_finance and not has_staff:
                 user.travel_umroh_role = "finance"
             else:
                 user.travel_umroh_role = False

@@ -171,6 +171,19 @@ class TestTravelSecurity(TravelUmrohCase):
         self.assertEqual(self.manager.travel_umroh_role, "manager")
         self.assertFalse(self.internal_user.travel_umroh_role)
 
+    def test_ambiguous_staff_finance_membership_requires_admin_choice(self):
+        staff_group = self.env.ref("travel_umroh.group_travel_staff")
+        finance_group = self.env.ref("travel_umroh.group_travel_finance")
+        user = self._create_user("mixed-role", None)
+        user.groups_id = [
+            Command.link(staff_group.id),
+            Command.link(finance_group.id),
+        ]
+
+        self.assertFalse(user.travel_umroh_role)
+        self.assertIn(staff_group, user.groups_id)
+        self.assertIn(finance_group, user.groups_id)
+
     def test_writing_travel_role_replaces_travel_group_membership(self):
         role_field = self.env["res.users"]._fields["travel_umroh_role"]
         self.assertTrue(role_field.inverse)
@@ -179,7 +192,11 @@ class TestTravelSecurity(TravelUmrohCase):
         finance_group = self.env.ref("travel_umroh.group_travel_finance")
         manager_group = self.env.ref("travel_umroh.group_travel_manager")
         internal_group = self.env.ref("base.group_user")
+        unrelated_group = self.env["res.groups"].create(
+            {"name": "Phase 1 Unrelated Group"}
+        )
         user = self.internal_user
+        user.groups_id = [Command.link(unrelated_group.id)]
         cases = (
             ("staff", {staff_group}),
             ("finance", {finance_group}),
@@ -192,6 +209,7 @@ class TestTravelSecurity(TravelUmrohCase):
                 user.write({"travel_umroh_role": role})
                 self.assertEqual(user.travel_umroh_role, role)
                 self.assertIn(internal_group, user.groups_id)
+                self.assertIn(unrelated_group, user.groups_id)
                 self.assertEqual(
                     set(user.groups_id) & {staff_group, finance_group, manager_group},
                     expected_travel_groups,
