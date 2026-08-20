@@ -15,6 +15,10 @@
     "data": [
         "security/travel_security.xml",
         "security/ir.model.access.csv",
+        "views/travel_master_views.xml",
+        "views/travel_package_views.xml",
+        "views/travel_departure_views.xml",
+        "views/travel_menus.xml",
     ],
     "application": True,
     "installable": True,

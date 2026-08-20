@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_travel_airline_list" model="ir.ui.view">
+        <field name="name">travel.airline.list</field>
+        <field name="model">travel.airline</field>
+        <field name="arch" type="xml">
+            <list string="Maskapai">
+                <field name="name"/>
+                <field name="iata_code"/>
+                <field name="active" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_travel_airline_form" model="ir.ui.view">
+        <field name="name">travel.airline.form</field>
+        <field name="model">travel.airline</field>
+        <field name="arch" type="xml">
+            <form string="Maskapai">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="iata_code" placeholder="Contoh: SV"/>
+                        <field name="active"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_travel_airline_search" model="ir.ui.view">
+        <field name="name">travel.airline.search</field>
+        <field name="model">travel.airline</field>
+        <field name="arch" type="xml">
+            <search string="Cari Maskapai">
+                <field name="name"/>
+                <field name="iata_code"/>
+                <separator/>
+                <filter name="archived" string="Diarsipkan" domain="[('active', '=', False)]" context="{'active_test': False}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_travel_airline" model="ir.actions.act_window">
+        <field name="name">Maskapai</field>
+        <field name="res_model">travel.airline</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_travel_airline_search"/>
+    </record>
+
+    <record id="view_travel_airport_list" model="ir.ui.view">
+        <field name="name">travel.airport.list</field>
+        <field name="model">travel.airport</field>
+        <field name="arch" type="xml">
+            <list string="Bandara">
+                <field name="iata_code"/>
+                <field name="name"/>
+                <field name="city"/>
+                <field name="country_id"/>
+                <field name="active" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_travel_airport_form" model="ir.ui.view">
+        <field name="name">travel.airport.form</field>
+        <field name="model">travel.airport</field>
+        <field name="arch" type="xml">
+            <form string="Bandara">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="iata_code" placeholder="Contoh: CGK"/>
+                        </group>
+                        <group>
+                            <field name="city"/>
+                            <field name="country_id"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_travel_airport_search" model="ir.ui.view">
+        <field name="name">travel.airport.search</field>
+        <field name="model">travel.airport</field>
+        <field name="arch" type="xml">
+            <search string="Cari Bandara">
+                <field name="name"/>
+                <field name="iata_code"/>
+                <field name="city"/>
+                <field name="country_id"/>
+                <separator/>
+                <filter name="archived" string="Diarsipkan" domain="[('active', '=', False)]" context="{'active_test': False}"/>
+                <group expand="0" string="Kelompokkan">
+                    <filter name="group_city" string="Kota" context="{'group_by': 'city'}"/>
+                    <filter name="group_country" string="Negara" context="{'group_by': 'country_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_travel_airport" model="ir.actions.act_window">
+        <field name="name">Bandara</field>
+        <field name="res_model">travel.airport</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_travel_airport_search"/>
+    </record>
+
+    <record id="view_travel_hotel_list" model="ir.ui.view">
+        <field name="name">travel.hotel.list</field>
+        <field name="model">travel.hotel</field>
+        <field name="arch" type="xml">
+            <list string="Hotel">
+                <field name="name"/>
+                <field name="city"/>
+                <field name="star_rating"/>
+                <field name="distance_to_mosque_km"/>
+                <field name="active" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_travel_hotel_form" model="ir.ui.view">
+        <field name="name">travel.hotel.form</field>
+        <field name="model">travel.hotel</field>
+        <field name="arch" type="xml">
+            <form string="Hotel">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="city" placeholder="Contoh: Makkah atau Madinah"/>
+                        </group>
+                        <group>
+                            <field name="star_rating"/>
+                            <field name="distance_to_mosque_km"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_travel_hotel_search" model="ir.ui.view">
+        <field name="name">travel.hotel.search</field>
+        <field name="model">travel.hotel</field>
+        <field name="arch" type="xml">
+            <search string="Cari Hotel">
+                <field name="name"/>
+                <field name="city"/>
+                <field name="star_rating"/>
+                <separator/>
+                <filter name="archived" string="Diarsipkan" domain="[('active', '=', False)]" context="{'active_test': False}"/>
+                <group expand="0" string="Kelompokkan">
+                    <filter name="group_city" string="Kota" context="{'group_by': 'city'}"/>
+                    <filter name="group_rating" string="Rating" context="{'group_by': 'star_rating'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_travel_hotel" model="ir.actions.act_window">
+        <field name="name">Hotel</field>
+        <field name="res_model">travel.hotel</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_travel_hotel_search"/>
+    </record>
+</odoo>
