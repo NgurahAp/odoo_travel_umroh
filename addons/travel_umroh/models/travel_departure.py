@@ -118,12 +118,9 @@ class TravelDeparture(models.Model):
                 raise ValidationError(_("Kuota keberangkatan tidak boleh negatif."))
 
     def write(self, values):
-        if (
-            values.get("state") == "open"
-            and not self.env.context.get("_travel_allow_state_change")
-        ):
+        if "state" in values:
             raise UserError(
-                _("Gunakan aksi Buka Keberangkatan untuk mengubah status menjadi Dibuka.")
+                _("Gunakan aksi status keberangkatan untuk mengubah status.")
             )
         return super().write(values)
 
@@ -156,7 +153,7 @@ class TravelDeparture(models.Model):
                         end=departure.return_date,
                     )
                 )
-        self.with_context(_travel_allow_state_change=True).write({"state": "open"})
+        super(TravelDeparture, self).write({"state": "open"})
         return True
 
     def _get_out_of_range_accommodations(self):
@@ -174,7 +171,5 @@ class TravelDeparture(models.Model):
                 raise UserError(
                     _("Hanya keberangkatan Draft atau Dibuka yang dapat dibatalkan.")
                 )
-        self.with_context(_travel_allow_state_change=True).write(
-            {"state": "cancelled"}
-        )
+        super(TravelDeparture, self).write({"state": "cancelled"})
         return True

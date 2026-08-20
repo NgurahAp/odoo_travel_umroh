@@ -101,6 +101,46 @@ class TestTravelDeparture(TravelUmrohCase):
         with self.assertRaises(UserError):
             departure.write({"state": "open"})
 
+    def test_client_context_cannot_bypass_open_action(self):
+        departure = self._create_departure()
+        self._add_complete_prices(departure)
+
+        with self.assertRaises(UserError):
+            departure.with_context(_travel_allow_state_change=True).write(
+                {"state": "open"}
+            )
+
+        self.assertEqual(departure.state, "draft")
+
+    def test_direct_write_cannot_enter_other_workflow_states(self):
+        departure = self._create_departure()
+
+        for target_state in ("departed", "done", "cancelled"):
+            with self.subTest(target_state=target_state), self.assertRaises(UserError):
+                departure.write({"state": target_state})
+
+        self.assertEqual(departure.state, "draft")
+
+    def test_open_departure_required_price_cannot_be_deleted(self):
+        departure = self._create_departure()
+        self._add_complete_prices(departure)
+        departure.action_open()
+        quad_price = departure.price_ids.filtered(lambda line: line.room_type == "quad")
+
+        with self.assertRaises(UserError):
+            quad_price.unlink()
+
+        self.assertTrue(quad_price.exists())
+
+    def test_open_departure_price_structure_cannot_be_changed(self):
+        departure = self._create_departure()
+        self._add_complete_prices(departure)
+        departure.action_open()
+        quad_price = departure.price_ids.filtered(lambda line: line.room_type == "quad")
+
+        with self.assertRaises(UserError):
+            quad_price.write({"room_type": "triple"})
+
     def test_cancelled_departure_cannot_be_reopened(self):
         departure = self._create_departure()
         self._add_complete_prices(departure)

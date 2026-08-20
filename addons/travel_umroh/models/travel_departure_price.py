@@ -1,5 +1,5 @@
 from odoo import _, api, fields, models
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 
 
 class TravelDeparturePrice(models.Model):
@@ -45,3 +45,27 @@ class TravelDeparturePrice(models.Model):
         for departure_price in self:
             if departure_price.price < 0:
                 raise ValidationError(_("Harga keberangkatan tidak boleh negatif."))
+
+    def write(self, values):
+        if {"departure_id", "room_type"} & values.keys():
+            departures = self.mapped("departure_id")
+            if values.get("departure_id"):
+                departures |= self.env["travel.departure"].browse(
+                    values["departure_id"]
+                )
+            self._ensure_departures_allow_price_structure_changes(departures)
+        return super().write(values)
+
+    def unlink(self):
+        self._ensure_departures_allow_price_structure_changes(
+            self.mapped("departure_id")
+        )
+        return super().unlink()
+
+    def _ensure_departures_allow_price_structure_changes(self, departures):
+        if departures.filtered(lambda departure: departure.state != "draft"):
+            raise UserError(
+                _(
+                    "Struktur harga hanya dapat diubah saat keberangkatan masih Draft."
+                )
+            )
