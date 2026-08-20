@@ -181,6 +181,53 @@ class TestTravelItinerary(TravelUmrohCase):
 
         self.assertEqual(departure.state, "open")
 
+    def test_open_departure_rejects_new_accommodation_outside_trip_window(self):
+        departure = self._create_departure()
+        self._add_complete_prices(departure)
+        departure.action_open()
+
+        with self.assertRaises(ValidationError):
+            self.env["travel.departure.accommodation"].create(
+                {
+                    "departure_id": departure.id,
+                    "hotel_id": self.hotel.id,
+                    "check_in": "2027-03-14",
+                    "check_out": "2027-03-17",
+                }
+            )
+
+    def test_open_departure_rejects_accommodation_moved_outside_trip_window(self):
+        departure = self._create_departure()
+        self._add_complete_prices(departure)
+        stay = self.env["travel.departure.accommodation"].create(
+            {
+                "departure_id": departure.id,
+                "hotel_id": self.hotel.id,
+                "check_in": "2027-03-15",
+                "check_out": "2027-03-20",
+            }
+        )
+        departure.action_open()
+
+        with self.assertRaises(ValidationError):
+            stay.write({"check_in": "2027-03-14"})
+
+    def test_open_departure_rejects_date_change_that_invalidates_accommodation(self):
+        departure = self._create_departure()
+        self._add_complete_prices(departure)
+        self.env["travel.departure.accommodation"].create(
+            {
+                "departure_id": departure.id,
+                "hotel_id": self.hotel.id,
+                "check_in": "2027-03-15",
+                "check_out": "2027-03-24",
+            }
+        )
+        departure.action_open()
+
+        with self.assertRaises(ValidationError):
+            departure.write({"return_date": "2027-03-23"})
+
     def test_accommodations_are_ordered_by_sequence(self):
         departure = self._create_departure()
         second = self.env["travel.departure.accommodation"].create(

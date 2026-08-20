@@ -33,3 +33,20 @@ class TravelDepartureAccommodation(models.Model):
                 and accommodation.check_out <= accommodation.check_in
             ):
                 raise ValidationError(_("Tanggal check-out harus setelah check-in."))
+
+    @api.constrains("departure_id", "check_in", "check_out")
+    def _check_open_departure_trip_window(self):
+        for accommodation in self:
+            departure = accommodation.departure_id
+            if departure.state not in {"open", "departed", "done"}:
+                continue
+            if (
+                accommodation.check_in < departure.departure_date
+                or accommodation.check_out > departure.return_date
+            ):
+                raise ValidationError(
+                    _(
+                        "Akomodasi keberangkatan yang sudah dibuka harus berada "
+                        "dalam rentang perjalanan."
+                    )
+                )

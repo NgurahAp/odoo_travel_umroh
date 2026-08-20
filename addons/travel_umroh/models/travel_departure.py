@@ -100,6 +100,16 @@ class TravelDeparture(models.Model):
                 raise ValidationError(
                     _("Tanggal kepulangan harus setelah tanggal keberangkatan.")
                 )
+            if (
+                departure.state in {"open", "departed", "done"}
+                and departure._get_out_of_range_accommodations()
+            ):
+                raise ValidationError(
+                    _(
+                        "Akomodasi keberangkatan yang sudah dibuka harus tetap berada "
+                        "dalam rentang perjalanan."
+                    )
+                )
 
     @api.constrains("quota")
     def _check_quota(self):
@@ -137,10 +147,7 @@ class TravelDeparture(models.Model):
                         rooms=missing_labels,
                     )
                 )
-            invalid_stays = departure.accommodation_ids.filtered(
-                lambda stay: stay.check_in < departure.departure_date
-                or stay.check_out > departure.return_date
-            )
+            invalid_stays = departure._get_out_of_range_accommodations()
             if invalid_stays:
                 raise UserError(
                     _(
@@ -151,6 +158,15 @@ class TravelDeparture(models.Model):
                 )
         self.with_context(_travel_allow_state_change=True).write({"state": "open"})
         return True
+
+    def _get_out_of_range_accommodations(self):
+        self.ensure_one()
+        if not self.departure_date or not self.return_date:
+            return self.env["travel.departure.accommodation"]
+        return self.accommodation_ids.filtered(
+            lambda stay: stay.check_in < self.departure_date
+            or stay.check_out > self.return_date
+        )
 
     def action_cancel(self):
         for departure in self:
