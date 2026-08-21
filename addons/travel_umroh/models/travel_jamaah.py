@@ -1,7 +1,7 @@
 from dateutil.relativedelta import relativedelta
 
 from odoo import _, api, fields, models
-from odoo.exceptions import ValidationError
+from odoo.exceptions import AccessError, UserError, ValidationError
 
 
 class TravelJamaah(models.Model):
@@ -54,6 +54,66 @@ class TravelJamaah(models.Model):
     emergency_contact_phone = fields.Char(
         string="Telepon Kontak Darurat", required=True, tracking=True
     )
+    ktp_file = fields.Binary(
+        string="File KTP", attachment=True, copy=False
+    )
+    ktp_filename = fields.Char(string="Nama File KTP", copy=False)
+    passport_file = fields.Binary(
+        string="File Paspor", attachment=True, copy=False
+    )
+    passport_filename = fields.Char(string="Nama File Paspor", copy=False)
+    document_status = fields.Selection(
+        [
+            ("incomplete", "Belum Lengkap"),
+            ("pending", "Menunggu Verifikasi"),
+            ("verified", "Terverifikasi"),
+        ],
+        string="Status Dokumen",
+        required=True,
+        default="incomplete",
+        tracking=True,
+        copy=False,
+        readonly=True,
+    )
+    verified_by = fields.Many2one(
+        "res.users",
+        string="Diverifikasi Oleh",
+        readonly=True,
+        copy=False,
+    )
+    verified_at = fields.Datetime(
+        string="Waktu Verifikasi", readonly=True, copy=False
+    )
+
+    _verification_metadata_fields = {
+        "document_status",
+        "verified_by",
+        "verified_at",
+    }
+    _verified_profile_fields = {
+        "partner_id",
+        "name",
+        "phone",
+        "email",
+        "street",
+        "street2",
+        "city",
+        "state_id",
+        "zip",
+        "country_id",
+        "nik",
+        "birth_place",
+        "birth_date",
+        "gender",
+        "passport_number",
+        "passport_expiry",
+        "emergency_contact_name",
+        "emergency_contact_phone",
+        "ktp_file",
+        "ktp_filename",
+        "passport_file",
+        "passport_filename",
+    }
 
     _sql_constraints = [
         ("partner_uniq", "unique(partner_id)", "Kontak sudah memiliki profil Jamaah."),
@@ -68,12 +128,114 @@ class TravelJamaah(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for values in vals_list:
+            if self._verification_metadata_fields.intersection(values):
+                raise UserError(
+                    _(
+                        "Gunakan aksi dokumen Jamaah untuk mengubah status "
+                        "verifikasi."
+                    )
+                )
             self._normalize_identity_values(values)
         return super().create(vals_list)
 
     def write(self, values):
+        if self._verification_metadata_fields.intersection(values):
+            raise UserError(
+                _(
+                    "Gunakan aksi dokumen Jamaah untuk mengubah status "
+                    "verifikasi."
+                )
+            )
+        changed_profile_fields = self._verified_profile_fields.intersection(
+            values
+        )
+        verified_records = self.filtered(
+            lambda jamaah: jamaah.document_status == "verified"
+        )
+        if (
+            verified_records
+            and changed_profile_fields
+            and not self.env.user.has_group(
+                "travel_umroh.group_travel_manager"
+            )
+        ):
+            raise AccessError(
+                _(
+                    "Hanya Manager Travel Umroh yang dapat mengoreksi data "
+                    "Jamaah terverifikasi."
+                )
+            )
         self._normalize_identity_values(values)
-        return super().write(values)
+        result = super().write(values)
+        if verified_records and changed_profile_fields:
+            field_labels = ", ".join(
+                self._fields[field_name].string
+                for field_name in sorted(changed_profile_fields)
+            )
+            for jamaah in verified_records:
+                jamaah.message_post(
+                    body=_(
+                        "Data Jamaah terverifikasi dikoreksi oleh "
+                        "%(user)s. Field: %(fields)s.",
+                        user=self.env.user.display_name,
+                        fields=field_labels,
+                    )
+                )
+        return result
+
+    def action_submit_documents(self):
+        for jamaah in self:
+            if jamaah.document_status != "incomplete":
+                raise UserError(
+                    _("Hanya dokumen yang belum lengkap yang dapat diajukan.")
+                )
+            if not all(
+                (
+                    jamaah.ktp_file,
+                    jamaah.passport_number,
+                    jamaah.passport_expiry,
+                    jamaah.passport_file,
+                )
+            ):
+                raise UserError(
+                    _(
+                        "Lengkapi file KTP, nomor dan masa berlaku paspor, "
+                        "serta file paspor sebelum diajukan."
+                    )
+                )
+            super(TravelJamaah, jamaah).write(
+                {
+                    "document_status": "pending",
+                    "verified_by": False,
+                    "verified_at": False,
+                }
+            )
+        return True
+
+    def action_verify_documents(self):
+        if not self.env.user.has_group("travel_umroh.group_travel_manager"):
+            raise AccessError(
+                _("Hanya Manager Travel Umroh yang dapat memverifikasi dokumen.")
+            )
+        for jamaah in self:
+            if jamaah.document_status != "pending":
+                raise UserError(
+                    _("Hanya dokumen yang menunggu verifikasi yang dapat diverifikasi.")
+                )
+            super(TravelJamaah, jamaah).write(
+                {
+                    "document_status": "verified",
+                    "verified_by": self.env.user.id,
+                    "verified_at": fields.Datetime.now(),
+                }
+            )
+            jamaah.message_post(
+                body=_(
+                    "Dokumen jamaah diverifikasi oleh %(user)s.",
+                    user=self.env.user.display_name,
+                )
+            )
+        return True
 
     @api.depends("birth_date")
     def _compute_age(self):
