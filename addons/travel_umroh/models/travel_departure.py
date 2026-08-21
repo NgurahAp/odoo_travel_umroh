@@ -74,6 +74,12 @@ class TravelDeparture(models.Model):
         "departure_id",
         string="Itinerary Akomodasi",
     )
+    booking_ids = fields.One2many(
+        "sale.order", "departure_id", string="Booking"
+    )
+    booking_count = fields.Integer(
+        string="Jumlah Booking", compute="_compute_booking_count"
+    )
     active = fields.Boolean(string="Aktif", default=True)
 
     @api.depends("package_id.code", "departure_date")
@@ -88,6 +94,25 @@ class TravelDeparture(models.Model):
                 departure.name = departure.package_id.code
             else:
                 departure.name = _("Keberangkatan Baru")
+
+    @api.depends("booking_ids")
+    def _compute_booking_count(self):
+        for departure in self:
+            departure.booking_count = len(departure.booking_ids)
+
+    def action_view_bookings(self):
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Booking"),
+            "res_model": "sale.order",
+            "view_mode": "list,form",
+            "domain": [("departure_id", "=", self.id)],
+            "context": {
+                "default_is_travel_booking": True,
+                "default_departure_id": self.id,
+            },
+        }
 
     @api.constrains("departure_date", "return_date")
     def _check_trip_dates(self):
