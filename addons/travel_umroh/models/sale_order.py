@@ -26,10 +26,24 @@ class SaleOrder(models.Model):
         store=True,
         readonly=True,
     )
+    participant_ids = fields.One2many(
+        "travel.booking.participant",
+        "order_id",
+        string="Participant",
+        copy=False,
+    )
+    participant_count = fields.Integer(
+        string="Jumlah Participant", compute="_compute_participant_count"
+    )
+
+    @api.depends("participant_ids")
+    def _compute_participant_count(self):
+        for order in self:
+            order.participant_count = len(order.participant_ids)
 
     def write(self, values):
         if values.get("is_travel_booking") is False and self.filtered(
-            "departure_id"
+            lambda order: order.departure_id or order.participant_ids
         ):
             raise ValidationError(
                 _(

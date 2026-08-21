@@ -26,3 +26,6 @@ access_travel_departure_accommodation_manager,travel.departure.accommodation.man
 access_travel_jamaah_staff,travel.jamaah.staff,model_travel_jamaah,group_travel_staff,1,1,1,0
 access_travel_jamaah_finance,travel.jamaah.finance,model_travel_jamaah,group_travel_finance,1,0,0,0
 access_travel_jamaah_manager,travel.jamaah.manager,model_travel_jamaah,group_travel_manager,1,1,1,1
+access_travel_booking_participant_staff,travel.booking.participant.staff,model_travel_booking_participant,group_travel_staff,1,1,1,1
+access_travel_booking_participant_finance,travel.booking.participant.finance,model_travel_booking_participant,group_travel_finance,1,0,0,0
+access_travel_booking_participant_manager,travel.booking.participant.manager,model_travel_booking_participant,group_travel_manager,1,1,1,1

@@ -1,3 +1,4 @@
+from odoo import Command
 from odoo.tests.common import TransactionCase
 
 
@@ -10,6 +11,7 @@ class TravelUmrohCase(TransactionCase):
                 "name": "Umroh Service Fixture",
                 "type": "service",
                 "invoice_policy": "order",
+                "taxes_id": [Command.clear()],
             }
         )
         cls.package = cls.env["travel.package"].create(
