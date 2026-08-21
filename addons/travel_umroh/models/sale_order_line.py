@@ -45,6 +45,15 @@ class SaleOrderLine(models.Model):
 
     def write(self, values):
         self.check_access("write")
+        if "order_id" in values:
+            target_order = self.env["sale.order"].browse(values["order_id"])
+            if target_order.is_travel_booking:
+                raise UserError(
+                    _(
+                        "Baris Sales biasa tidak dapat dipindahkan ke Booking "
+                        "Travel. Tambahkan Jamaah melalui Participant."
+                    )
+                )
         if self.filtered("travel_participant_id"):
             raise UserError(
                 _("Ubah baris harga melalui Participant Booking Travel.")

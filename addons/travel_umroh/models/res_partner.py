@@ -5,20 +5,21 @@ from odoo.exceptions import AccessError
 class ResPartner(models.Model):
     _inherit = "res.partner"
 
-    _travel_jamaah_contact_fields = {
-        "name",
-        "phone",
-        "email",
-        "street",
-        "street2",
-        "city",
-        "state_id",
-        "zip",
-        "country_id",
-    }
-
     def write(self, values):
-        changed_fields = self._travel_jamaah_contact_fields.intersection(values)
+        if self.env.user.has_group("travel_umroh.group_travel_staff"):
+            protected_internal_partners = self.filtered(
+                lambda partner: partner != self.env.user.partner_id
+                and partner.user_ids.filtered(lambda user: not user.share)
+            )
+            if protected_internal_partners:
+                raise AccessError(
+                    _(
+                        "Role Travel tidak dapat mengubah kontak milik user "
+                        "internal lain."
+                    )
+                )
+
+        changed_fields = set(values)
         verified_jamaah = self.env["travel.jamaah"]
         if changed_fields:
             verified_jamaah = self.env["travel.jamaah"].sudo().search(
@@ -42,6 +43,7 @@ class ResPartner(models.Model):
             field_labels = ", ".join(
                 self._fields[field_name].string
                 for field_name in sorted(changed_fields)
+                if field_name in self._fields
             )
             for jamaah in verified_jamaah.with_user(self.env.user):
                 jamaah.message_post(

@@ -233,8 +233,14 @@ class SaleOrder(models.Model):
             return super()._action_cancel()
 
     def action_draft(self):
-        with _allow_travel_state_transition():
-            return super().action_draft()
+        if self.filtered("is_travel_booking"):
+            raise UserError(
+                _(
+                    "Booking Travel yang sudah dibatalkan tidak dapat "
+                    "dikembalikan menjadi Draft pada Phase 2."
+                )
+            )
+        return super().action_draft()
 
     def action_refresh_travel_prices(self):
         for order in self:

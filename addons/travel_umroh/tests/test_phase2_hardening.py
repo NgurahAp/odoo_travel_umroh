@@ -109,6 +109,30 @@ class TestPhaseTwoHardening(TravelBookingCase):
             self.env["sale.order.line"].with_user(self.manager).create(values)
         self.assertTrue(participant.sale_line_id.exists())
 
+    def test_regular_sale_line_cannot_be_moved_into_travel_order(self):
+        travel_order = self._order(self.staff)
+        self._participant(travel_order, "916", self.staff)
+        regular_order = self.env["sale.order"].with_user(self.staff).create(
+            {"partner_id": self.buyer.id, "user_id": self.staff.id}
+        )
+        regular_line = self.env["sale.order.line"].with_user(self.staff).create(
+            {
+                "order_id": regular_order.id,
+                "product_id": self.service_product.id,
+                "product_uom_qty": 1,
+            }
+        )
+
+        with self.assertRaises(UserError):
+            regular_line.with_user(self.staff).write(
+                {"order_id": travel_order.id}
+            )
+        travel_order.with_user(self.staff).action_confirm()
+        with self.assertRaises(UserError):
+            regular_line.with_user(self.staff).write(
+                {"order_id": travel_order.id}
+            )
+
     def test_confirmation_rejects_any_extra_non_display_line(self):
         order = self._order()
         self._participant(order, "902")
@@ -188,18 +212,22 @@ class TestPhaseTwoHardening(TravelBookingCase):
                 }
             )
 
-    def test_legitimate_confirm_cancel_and_reset_actions_still_work(self):
+    def test_confirm_and_cancel_work_but_cancelled_travel_cannot_reset(self):
         order = self._order(self.manager)
-        self._participant(order, "913", self.manager)
+        participant = self._participant(order, "913", self.manager)
 
         order.with_user(self.manager).action_confirm()
         self.assertEqual(order.state, "sale")
-        order.with_user(self.manager).with_context(
+        order.with_user(self.staff).with_context(
             disable_cancel_warning=True
         ).action_cancel()
         self.assertEqual(order.state, "cancel")
-        order.with_user(self.manager).action_draft()
-        self.assertEqual(order.state, "draft")
+        with self.assertRaises(UserError):
+            order.with_user(self.staff).action_draft()
+        with self.assertRaises(UserError):
+            order.with_user(self.manager).action_draft()
+        with self.assertRaises(AccessError):
+            participant.with_user(self.staff).write({"room_type": "double"})
 
     def test_participant_sale_line_pointer_is_internal_only(self):
         order = self._order(self.staff)
@@ -315,6 +343,28 @@ class TestPhaseTwoHardening(TravelBookingCase):
             self.env["res.partner.bank"].with_user(self.staff).create(
                 {"partner_id": partner.id, "acc_number": "1234567890"}
             )
+
+    def test_staff_cannot_mutate_other_internal_or_archive_verified_partner(self):
+        internal_user = self._role_user(
+            "phase2-protected-internal", "group_travel_finance"
+        )
+        with self.assertRaises(AccessError):
+            internal_user.partner_id.with_user(self.staff).write(
+                {"name": "Compromised Internal User"}
+            )
+
+        jamaah = self._verified_jamaah("917")
+        with self.assertRaises(AccessError):
+            jamaah.partner_id.with_user(self.staff).write({"active": False})
+
+        jamaah.partner_id.with_user(self.manager).write({"active": False})
+        self.assertFalse(jamaah.partner_id.active)
+        audit_messages = jamaah.message_ids.filtered(
+            lambda message: "Kontak Jamaah terverifikasi dikoreksi"
+            in (message.body or "")
+        )
+        self.assertTrue(audit_messages)
+        self.assertNotIn("False", " ".join(audit_messages.mapped("body")))
 
     def test_role_switch_removes_travel_derived_standard_permissions(self):
         cases = (
