@@ -84,6 +84,15 @@ class TravelJamaah(models.Model):
     verified_at = fields.Datetime(
         string="Waktu Verifikasi", readonly=True, copy=False
     )
+    participant_ids = fields.One2many(
+        "travel.booking.participant",
+        "jamaah_id",
+        string="Participant Booking",
+        readonly=True,
+    )
+    booking_count = fields.Integer(
+        string="Jumlah Booking", compute="_compute_booking_count"
+    )
 
     _verification_metadata_fields = {
         "document_status",
@@ -236,6 +245,22 @@ class TravelJamaah(models.Model):
                 )
             )
         return True
+
+    @api.depends("participant_ids.order_id")
+    def _compute_booking_count(self):
+        for jamaah in self:
+            jamaah.booking_count = len(jamaah.participant_ids.mapped("order_id"))
+
+    def action_view_bookings(self):
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Booking Jamaah"),
+            "res_model": "sale.order",
+            "view_mode": "list,form",
+            "domain": [("participant_ids.jamaah_id", "=", self.id)],
+            "context": {"default_is_travel_booking": True},
+        }
 
     @api.depends("birth_date")
     def _compute_age(self):

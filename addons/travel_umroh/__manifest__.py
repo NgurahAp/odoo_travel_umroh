@@ -18,6 +18,8 @@
         "views/res_users_views.xml",
         "views/travel_master_views.xml",
         "views/travel_package_views.xml",
+        "views/travel_jamaah_views.xml",
+        "views/travel_booking_views.xml",
         "views/travel_departure_views.xml",
         "views/travel_menus.xml",
     ],

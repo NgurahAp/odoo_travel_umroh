@@ -2,6 +2,8 @@
 <odoo>
     <menuitem id="menu_travel_root" name="Travel Umroh" sequence="60" groups="travel_umroh.group_travel_staff,travel_umroh.group_travel_finance,travel_umroh.group_travel_manager"/>
 
+    <menuitem id="menu_travel_booking" name="Booking" parent="menu_travel_root" action="action_travel_booking" sequence="10"/>
+    <menuitem id="menu_travel_jamaah" name="Jamaah" parent="menu_travel_root" action="action_travel_jamaah" sequence="20"/>
     <menuitem id="menu_travel_package" name="Paket" parent="menu_travel_root" action="action_travel_package" sequence="30"/>
     <menuitem id="menu_travel_departure" name="Keberangkatan" parent="menu_travel_root" action="action_travel_departure" sequence="40"/>
 

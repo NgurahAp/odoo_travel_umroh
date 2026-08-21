@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_travel_jamaah_list" model="ir.ui.view">
+        <field name="name">travel.jamaah.list</field>
+        <field name="model">travel.jamaah</field>
+        <field name="arch" type="xml">
+            <list string="Jamaah">
+                <field name="partner_id"/>
+                <field name="nik"/>
+                <field name="phone"/>
+                <field name="birth_date"/>
+                <field name="age"/>
+                <field name="passport_number"/>
+                <field name="document_status" widget="badge"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_travel_jamaah_form" model="ir.ui.view">
+        <field name="name">travel.jamaah.form</field>
+        <field name="model">travel.jamaah</field>
+        <field name="arch" type="xml">
+            <form string="Profil Jamaah">
+                <header>
+                    <button name="action_submit_documents" type="object" string="Ajukan Dokumen" class="btn-primary" invisible="document_status != 'incomplete'"/>
+                    <button name="action_verify_documents" type="object" string="Verifikasi Dokumen" class="btn-primary" groups="travel_umroh.group_travel_manager" invisible="document_status != 'pending'"/>
+                    <field name="document_status" widget="statusbar" statusbar_visible="incomplete,pending,verified"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_bookings" type="object" class="oe_stat_button" icon="fa-suitcase">
+                            <field name="booking_count" string="Booking" widget="statinfo"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <label for="partner_id"/>
+                        <h1><field name="partner_id"/></h1>
+                    </div>
+                    <group>
+                        <group string="Kontak dan Alamat">
+                            <field name="phone"/>
+                            <field name="email" widget="email"/>
+                            <field name="street"/>
+                            <field name="street2"/>
+                            <field name="city"/>
+                            <field name="state_id" options="{'no_create': True}"/>
+                            <field name="zip"/>
+                            <field name="country_id" options="{'no_create': True}"/>
+                        </group>
+                        <group string="Identitas">
+                            <field name="nik"/>
+                            <field name="birth_place"/>
+                            <field name="birth_date"/>
+                            <field name="age" readonly="1"/>
+                            <field name="gender"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Paspor">
+                            <field name="passport_number"/>
+                            <field name="passport_expiry"/>
+                        </group>
+                        <group string="Kontak Darurat">
+                            <field name="emergency_contact_name"/>
+                            <field name="emergency_contact_phone"/>
+                        </group>
+                    </group>
+                    <group string="Dokumen">
+                        <group>
+                            <field name="ktp_file" filename="ktp_filename"/>
+                            <field name="ktp_filename" invisible="1"/>
+                        </group>
+                        <group>
+                            <field name="passport_file" filename="passport_filename"/>
+                            <field name="passport_filename" invisible="1"/>
+                        </group>
+                    </group>
+                    <group string="Verifikasi">
+                        <field name="verified_by" readonly="1"/>
+                        <field name="verified_at" readonly="1"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_travel_jamaah_search" model="ir.ui.view">
+        <field name="name">travel.jamaah.search</field>
+        <field name="model">travel.jamaah</field>
+        <field name="arch" type="xml">
+            <search string="Cari Jamaah">
+                <field name="partner_id"/>
+                <field name="nik"/>
+                <field name="passport_number"/>
+                <field name="phone"/>
+                <separator/>
+                <filter name="incomplete" string="Belum Lengkap" domain="[('document_status', '=', 'incomplete')]"/>
+                <filter name="pending" string="Menunggu Verifikasi" domain="[('document_status', '=', 'pending')]"/>
+                <filter name="verified" string="Terverifikasi" domain="[('document_status', '=', 'verified')]"/>
+                <group expand="0" string="Kelompokkan">
+                    <filter name="group_document_status" string="Status Dokumen" context="{'group_by': 'document_status'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_travel_jamaah" model="ir.actions.act_window">
+        <field name="name">Jamaah</field>
+        <field name="res_model">travel.jamaah</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_travel_jamaah_search"/>
+    </record>
+</odoo>
