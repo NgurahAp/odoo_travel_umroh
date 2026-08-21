@@ -31,6 +31,7 @@ class SaleOrderLine(models.Model):
         return super().create(vals_list)
 
     def write(self, values):
+        self.check_access("write")
         if self.filtered("travel_participant_id"):
             raise UserError(
                 _("Ubah baris harga melalui Participant Booking Travel.")
@@ -38,6 +39,7 @@ class SaleOrderLine(models.Model):
         return super().write(values)
 
     def unlink(self):
+        self.check_access("unlink")
         if self.filtered("travel_participant_id"):
             raise UserError(
                 _("Ubah baris harga melalui Participant Booking Travel.")

@@ -1,4 +1,5 @@
 from . import test_booking
+from . import test_booking_security
 from . import test_departure
 from . import test_itinerary
 from . import test_jamaah

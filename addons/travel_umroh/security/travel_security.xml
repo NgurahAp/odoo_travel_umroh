@@ -23,4 +23,18 @@
         <field name="category_id" ref="module_category_travel_umroh"/>
         <field name="implied_ids" eval="[(4, ref('group_travel_staff')), (4, ref('group_travel_finance'))]"/>
     </record>
+
+    <record id="rule_travel_booking_all_roles" model="ir.rule">
+        <field name="name">Travel roles: all travel bookings</field>
+        <field name="model_id" ref="sale.model_sale_order"/>
+        <field name="domain_force">[('is_travel_booking', '=', True)]</field>
+        <field name="groups" eval="[(4, ref('group_travel_staff')), (4, ref('group_travel_finance'))]"/>
+    </record>
+
+    <record id="rule_travel_booking_line_all_roles" model="ir.rule">
+        <field name="name">Travel roles: all travel booking lines</field>
+        <field name="model_id" ref="sale.model_sale_order_line"/>
+        <field name="domain_force">[('order_id.is_travel_booking', '=', True)]</field>
+        <field name="groups" eval="[(4, ref('group_travel_staff')), (4, ref('group_travel_finance'))]"/>
+    </record>
 </odoo>
