@@ -1,5 +1,5 @@
 from odoo import _, api, fields, models
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 
 
 class SaleOrder(models.Model):
@@ -51,7 +51,50 @@ class SaleOrder(models.Model):
                     "keberangkatan dipilih."
                 )
             )
-        return super().write(values)
+        if values.get("departure_id") is False and self.filtered(
+            "participant_ids"
+        ):
+            raise UserError(
+                _(
+                    "Keberangkatan tidak dapat dikosongkan selama booking "
+                    "masih memiliki participant."
+                )
+            )
+
+        result = super().write(values)
+        if "departure_id" in values:
+            travel_orders = self.filtered(
+                lambda order: order.is_travel_booking
+                and order.departure_id
+                and order.participant_ids
+            )
+            travel_orders.action_refresh_travel_prices()
+        return result
+
+    def action_refresh_travel_prices(self):
+        for order in self:
+            if not order.is_travel_booking:
+                raise UserError(
+                    _("Harga travel hanya tersedia pada Booking Travel Umroh.")
+                )
+            if order.state not in ("draft", "sent"):
+                raise UserError(
+                    _("Harga travel hanya dapat diperbarui pada quotation.")
+                )
+            if not order.departure_id:
+                raise UserError(
+                    _("Pilih keberangkatan sebelum memperbarui harga travel.")
+                )
+            order.participant_ids._refresh_from_departure_price()
+            order.message_post(
+                body=_(
+                    "Harga %(count)s participant diperbarui dari "
+                    "keberangkatan %(departure)s.",
+                    count=len(order.participant_ids),
+                    departure=order.departure_id.display_name,
+                )
+            )
+        return True
 
     @api.constrains(
         "is_travel_booking", "departure_id", "company_id", "pricelist_id"

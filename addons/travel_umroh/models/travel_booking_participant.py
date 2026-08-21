@@ -91,6 +91,26 @@ class TravelBookingParticipant(models.Model):
             lines._travel_unlink_from_participant()
         return result
 
+    def write(self, values):
+        if "order_id" in values:
+            raise UserError(
+                _("Participant tidak dapat dipindahkan ke booking lain.")
+            )
+        if "unit_price" in values:
+            raise UserError(
+                _(
+                    "Harga snapshot tidak dapat diubah langsung. Gunakan "
+                    "aksi Perbarui Harga Travel pada booking."
+                )
+            )
+
+        result = super().write(values)
+        if "room_type" in values:
+            self._refresh_from_departure_price()
+        elif "jamaah_id" in values:
+            self._sync_sale_line()
+        return result
+
     @api.model
     def _get_departure_price(self, order, room_type):
         if not order.exists() or not order.is_travel_booking:
@@ -133,3 +153,22 @@ class TravelBookingParticipant(models.Model):
             ),
             "travel_participant_id": self.id,
         }
+
+    def _sync_sale_line(self):
+        for participant in self:
+            if not participant.sale_line_id:
+                continue
+            line_values = participant._prepare_sale_line_values()
+            line_values.pop("order_id")
+            line_values.pop("travel_participant_id")
+            participant.sale_line_id._travel_write_from_participant(line_values)
+
+    def _refresh_from_departure_price(self):
+        for participant in self:
+            departure_price = self._get_departure_price(
+                participant.order_id, participant.room_type
+            )
+            super(TravelBookingParticipant, participant).write(
+                {"unit_price": departure_price.price}
+            )
+            participant._sync_sale_line()

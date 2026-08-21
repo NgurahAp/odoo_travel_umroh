@@ -243,3 +243,147 @@ class TestTravelBooking(TravelBookingCase):
             participant.sale_line_id.write({"price_unit": 1})
         with self.assertRaises(UserError):
             participant.sale_line_id.unlink()
+
+    def test_departure_price_change_requires_explicit_snapshot_refresh(self):
+        order = self._create_order()
+        participant = self.env["travel.booking.participant"].create(
+            {
+                "order_id": order.id,
+                "jamaah_id": self._create_jamaah("201").id,
+                "room_type": "quad",
+            }
+        )
+        quad = self.departure.price_ids.filtered(
+            lambda price: price.room_type == "quad"
+        )
+        quad.write({"price": 31_000_000})
+
+        self.assertEqual(participant.unit_price, 30_000_000)
+        order.action_refresh_travel_prices()
+
+        self.assertEqual(participant.unit_price, 31_000_000)
+        self.assertEqual(participant.sale_line_id.price_unit, 31_000_000)
+        self.assertTrue(
+            order.message_ids.filtered(
+                lambda message: "Harga 1 participant diperbarui"
+                in (message.body or "")
+            )
+        )
+
+    def test_room_and_jamaah_changes_refresh_snapshot_and_description(self):
+        order = self._create_order()
+        participant = self.env["travel.booking.participant"].create(
+            {
+                "order_id": order.id,
+                "jamaah_id": self._create_jamaah("202").id,
+                "room_type": "quad",
+            }
+        )
+        replacement_jamaah = self._create_jamaah("203")
+
+        participant.write(
+            {"room_type": "double", "jamaah_id": replacement_jamaah.id}
+        )
+
+        self.assertEqual(participant.unit_price, 35_000_000)
+        self.assertEqual(participant.sale_line_id.price_unit, 35_000_000)
+        self.assertIn("Double", participant.sale_line_id.name)
+        self.assertIn(replacement_jamaah.name, participant.sale_line_id.name)
+
+    def test_changing_draft_departure_refreshes_product_price_and_description(self):
+        second_product = self.env["product.product"].create(
+            {
+                "name": "Synthetic Premium Umroh Service",
+                "type": "service",
+                "invoice_policy": "order",
+                "taxes_id": [Command.clear()],
+            }
+        )
+        second_package = self.env["travel.package"].create(
+            {
+                "name": "Synthetic Premium Package",
+                "code": "PREM-10",
+                "product_id": second_product.id,
+                "duration_days": 10,
+            }
+        )
+        second_departure = self.env["travel.departure"].create(
+            {
+                "package_id": second_package.id,
+                "departure_date": "2027-11-01",
+                "return_date": "2027-11-11",
+                "quota": 30,
+                "company_id": self.env.company.id,
+            }
+        )
+        for room_type, price in (
+            ("quad", 40_000_000),
+            ("triple", 42_000_000),
+            ("double", 45_000_000),
+        ):
+            self.env["travel.departure.price"].create(
+                {
+                    "departure_id": second_departure.id,
+                    "room_type": room_type,
+                    "price": price,
+                }
+            )
+        second_departure.action_open()
+        order = self._create_order()
+        participant = self.env["travel.booking.participant"].create(
+            {
+                "order_id": order.id,
+                "jamaah_id": self._create_jamaah("204").id,
+                "room_type": "quad",
+            }
+        )
+
+        order.write({"departure_id": second_departure.id})
+
+        self.assertEqual(participant.unit_price, 40_000_000)
+        self.assertEqual(participant.sale_line_id.price_unit, 40_000_000)
+        self.assertEqual(participant.sale_line_id.product_id, second_product)
+        self.assertIn(second_departure.display_name, participant.sale_line_id.name)
+
+    def test_participant_cannot_move_between_orders_or_accept_direct_price(self):
+        order = self._create_order()
+        other_order = self._create_order()
+        participant = self.env["travel.booking.participant"].create(
+            {
+                "order_id": order.id,
+                "jamaah_id": self._create_jamaah("205").id,
+                "room_type": "quad",
+            }
+        )
+        with self.assertRaises(UserError):
+            participant.write({"order_id": other_order.id})
+        with self.assertRaises(UserError):
+            participant.write({"unit_price": 1})
+
+    def test_spoofed_context_cannot_bypass_generated_line_guards(self):
+        order = self._create_order()
+        participant = self.env["travel.booking.participant"].create(
+            {
+                "order_id": order.id,
+                "jamaah_id": self._create_jamaah("206").id,
+                "room_type": "triple",
+            }
+        )
+        with self.assertRaises(UserError):
+            participant.sale_line_id.with_context(
+                _travel_participant_sync=True
+            ).write({"price_unit": 1})
+
+    def test_regular_sales_line_can_still_be_edited_and_deleted(self):
+        order = self.env["sale.order"].create({"partner_id": self.buyer.id})
+        line = self.env["sale.order.line"].create(
+            {
+                "order_id": order.id,
+                "product_id": self.service_product.id,
+                "product_uom_qty": 1,
+                "price_unit": 100,
+            }
+        )
+        line.write({"price_unit": 200})
+        self.assertEqual(line.price_unit, 200)
+        self.assertTrue(line.unlink())
