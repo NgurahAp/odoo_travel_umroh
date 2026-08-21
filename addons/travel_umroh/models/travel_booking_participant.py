@@ -1,5 +1,5 @@
 from odoo import _, api, fields, models
-from odoo.exceptions import AccessError, UserError
+from odoo.exceptions import AccessError, UserError, ValidationError
 
 
 class TravelBookingParticipant(models.Model):
@@ -69,6 +69,13 @@ class TravelBookingParticipant(models.Model):
         prepared_values = []
         for incoming_values in vals_list:
             values = dict(incoming_values)
+            if "sale_line_id" in values:
+                raise UserError(
+                    _(
+                        "Baris Sales Participant dibuat otomatis dan tidak "
+                        "dapat dipilih manual."
+                    )
+                )
             order = self.env["sale.order"].browse(values.get("order_id"))
             self._ensure_order_mutation_allowed(order)
             room_type = values.get("room_type")
@@ -118,9 +125,12 @@ class TravelBookingParticipant(models.Model):
         return result
 
     def write(self, values):
-        if "order_id" in values:
+        if {"order_id", "sale_line_id"}.intersection(values):
             raise UserError(
-                _("Participant tidak dapat dipindahkan ke booking lain.")
+                _(
+                    "Booking dan baris Sales Participant dikelola otomatis "
+                    "dan tidak dapat diubah manual."
+                )
             )
         is_manager = self.env.user.has_group(
             "travel_umroh.group_travel_manager"
@@ -189,6 +199,13 @@ class TravelBookingParticipant(models.Model):
     def _ensure_order_mutation_allowed(self, order):
         if not order.exists():
             raise UserError(_("Booking participant tidak ditemukan."))
+        if order.locked:
+            raise UserError(
+                _(
+                    "Participant tidak dapat diubah saat Sales Order terkunci. "
+                    "Buka kunci terlebih dahulu."
+                )
+            )
         if order.state not in ("draft", "sent") and not self.env.user.has_group(
             "travel_umroh.group_travel_manager"
         ):
@@ -243,6 +260,7 @@ class TravelBookingParticipant(models.Model):
             "product_uom_qty": 1,
             "product_uom": product.uom_id.id,
             "price_unit": self.unit_price,
+            "discount": 0,
             "name": _(
                 "%(jamaah)s — %(room)s — %(departure)s",
                 jamaah=self.jamaah_id.name,
@@ -251,6 +269,21 @@ class TravelBookingParticipant(models.Model):
             ),
             "travel_participant_id": self.id,
         }
+
+    @api.constrains("order_id", "sale_line_id")
+    def _check_sale_line_consistency(self):
+        for participant in self.filtered("sale_line_id"):
+            line = participant.sale_line_id
+            if (
+                line.order_id != participant.order_id
+                or line.travel_participant_id != participant
+            ):
+                raise ValidationError(
+                    _(
+                        "Baris Sales Participant harus berada pada booking yang "
+                        "sama dan menunjuk kembali ke participant."
+                    )
+                )
 
     def _sync_sale_line(self):
         for participant in self:

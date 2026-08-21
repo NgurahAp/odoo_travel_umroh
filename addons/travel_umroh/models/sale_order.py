@@ -1,5 +1,22 @@
+from contextlib import contextmanager
+from contextvars import ContextVar
+
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
+
+
+_travel_state_transition = ContextVar(
+    "travel_umroh_sale_state_transition", default=False
+)
+
+
+@contextmanager
+def _allow_travel_state_transition():
+    token = _travel_state_transition.set(True)
+    try:
+        yield
+    finally:
+        _travel_state_transition.reset(token)
 
 
 class SaleOrder(models.Model):
@@ -47,7 +64,7 @@ class SaleOrder(models.Model):
         for order in self:
             order.participant_count = len(order.participant_ids)
 
-    @api.depends("state")
+    @api.depends("state", "locked")
     @api.depends_context("uid")
     def _compute_travel_edit_helpers(self):
         is_manager = self.env.user.has_group(
@@ -55,11 +72,64 @@ class SaleOrder(models.Model):
         )
         for order in self:
             order.can_edit_travel_participants = (
-                order.state in ("draft", "sent") or is_manager
+                not order.locked
+                and (order.state in ("draft", "sent") or is_manager)
             )
             order.can_override_travel_price = is_manager
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        for values in vals_list:
+            if (
+                values.get("is_travel_booking")
+                and values.get("state", "draft") != "draft"
+            ):
+                raise UserError(
+                    _(
+                        "Booking Travel harus dibuat sebagai quotation Draft "
+                        "dan dikonfirmasi melalui aksi Confirm."
+                    )
+                )
+        return super().create(vals_list)
+
     def write(self, values):
+        if values.get("is_travel_booking") is True:
+            invalid_conversions = self.filtered(
+                lambda order: not order.is_travel_booking
+                and (
+                    order.state not in ("draft", "sent")
+                    or order.order_line.filtered(
+                        lambda line: not line.display_type
+                    )
+                )
+            )
+            if invalid_conversions:
+                raise UserError(
+                    _(
+                        "Hanya quotation Draft/Sent tanpa baris Sales yang "
+                        "dapat diubah menjadi Booking Travel."
+                    )
+                )
+        if "state" in values and not _travel_state_transition.get():
+            new_state = values["state"]
+            invalid_state_changes = self.filtered(
+                lambda order: (
+                    order.is_travel_booking
+                    or values.get("is_travel_booking") is True
+                )
+                and new_state != order.state
+                and not (
+                    order.state in ("draft", "sent")
+                    and new_state in ("draft", "sent")
+                )
+            )
+            if invalid_state_changes:
+                raise UserError(
+                    _(
+                        "Ubah status Booking Travel melalui aksi quotation "
+                        "standar, bukan dengan menulis field status langsung."
+                    )
+                )
         protected_travel_fields = {
             "departure_id",
             "is_travel_booking",
@@ -121,6 +191,17 @@ class SaleOrder(models.Model):
                     )
                 )
             expected_product = order.travel_package_id.product_id
+            participant_lines = order.participant_ids.mapped("sale_line_id")
+            actual_lines = order.order_line.filtered(
+                lambda line: not line.display_type
+            )
+            if set(actual_lines.ids) != set(participant_lines.ids):
+                raise UserError(
+                    _(
+                        "Booking Travel hanya boleh memiliki baris Sales yang "
+                        "dibuat dari Participant."
+                    )
+                )
             for participant in order.participant_ids:
                 line = participant.sale_line_id
                 if (
@@ -130,6 +211,7 @@ class SaleOrder(models.Model):
                     or line.product_id != expected_product
                     or line.product_uom != expected_product.uom_id
                     or line.product_uom_qty != 1
+                    or line.discount != 0
                     or order.currency_id.compare_amounts(
                         line.price_unit, participant.unit_price
                     )
@@ -143,7 +225,16 @@ class SaleOrder(models.Model):
                             participant=participant.jamaah_id.name,
                         )
                     )
-        return super().action_confirm()
+        with _allow_travel_state_transition():
+            return super().action_confirm()
+
+    def _action_cancel(self):
+        with _allow_travel_state_transition():
+            return super()._action_cancel()
+
+    def action_draft(self):
+        with _allow_travel_state_transition():
+            return super().action_draft()
 
     def action_refresh_travel_prices(self):
         for order in self:
@@ -158,6 +249,16 @@ class SaleOrder(models.Model):
             if not order.departure_id:
                 raise UserError(
                     _("Pilih keberangkatan sebelum memperbarui harga travel.")
+                )
+            if (
+                order.departure_id.state != "open"
+                or not order.departure_id.active
+            ):
+                raise UserError(
+                    _(
+                        "Harga hanya dapat diperbarui dari keberangkatan aktif "
+                        "yang berstatus Dibuka."
+                    )
                 )
             order.participant_ids._refresh_from_departure_price()
             order.message_post(

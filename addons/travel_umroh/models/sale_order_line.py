@@ -24,9 +24,22 @@ class SaleOrderLine(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        self.check_access("create")
         if any(values.get("travel_participant_id") for values in vals_list):
             raise UserError(
                 _("Baris participant hanya dapat dibuat melalui Booking Travel.")
+            )
+        order_ids = {
+            values.get("order_id") for values in vals_list if values.get("order_id")
+        }
+        if self.env["sale.order"].browse(order_ids).filtered(
+            "is_travel_booking"
+        ):
+            raise UserError(
+                _(
+                    "Baris Sales Booking Travel hanya dapat dibuat dari "
+                    "Participant."
+                )
             )
         return super().create(vals_list)
 

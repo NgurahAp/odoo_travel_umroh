@@ -45,9 +45,14 @@ class ResUsers(models.Model):
             "manager": self.env.ref("travel_umroh.group_travel_manager"),
         }
         travel_groups = tuple(role_groups.values())
+        sales_group = self.env.ref("sales_team.group_sale_salesman")
+        contact_manager_group = self.env.ref("base.group_partner_manager")
         for user in self:
             role = user.travel_umroh_role
             commands = [Command.unlink(group.id) for group in travel_groups]
+            commands.append(Command.unlink(contact_manager_group.id))
+            if role not in ("staff", "manager"):
+                commands.append(Command.unlink(sales_group.id))
             if role:
                 commands.append(Command.link(role_groups[role].id))
             user.groups_id = commands
