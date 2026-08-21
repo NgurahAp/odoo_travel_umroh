@@ -1,5 +1,5 @@
 from odoo import Command
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests import tagged
 from odoo.tools import mute_logger
 from psycopg2 import IntegrityError
@@ -357,7 +357,7 @@ class TestTravelBooking(TravelBookingCase):
         )
         with self.assertRaises(UserError):
             participant.write({"order_id": other_order.id})
-        with self.assertRaises(UserError):
+        with self.assertRaises(AccessError):
             participant.write({"unit_price": 1})
 
     def test_spoofed_context_cannot_bypass_generated_line_guards(self):
@@ -387,3 +387,205 @@ class TestTravelBooking(TravelBookingCase):
         line.write({"price_unit": 200})
         self.assertEqual(line.price_unit, 200)
         self.assertTrue(line.unlink())
+
+    def test_travel_order_requires_departure_and_participant_before_confirmation(self):
+        no_departure = self._create_order(departure_id=False)
+        with self.assertRaises(UserError):
+            no_departure.action_confirm()
+
+        no_participant = self._create_order()
+        with self.assertRaises(UserError):
+            no_participant.action_confirm()
+
+    def test_confirmation_keeps_departure_quota_unchanged(self):
+        order = self._create_order()
+        self.env["travel.booking.participant"].create(
+            {
+                "order_id": order.id,
+                "jamaah_id": self._create_jamaah("301").id,
+                "room_type": "quad",
+            }
+        )
+        quota_before = self.departure.quota
+
+        order.action_confirm()
+
+        self.assertEqual(order.state, "sale")
+        self.assertEqual(self.departure.quota, quota_before)
+        self.assertNotIn("seat_reserved", order._fields)
+        self.assertNotIn("reserved_seats", self.departure._fields)
+
+    def test_confirmed_order_cannot_refresh_snapshot_or_change_departure(self):
+        order = self._create_order()
+        self.env["travel.booking.participant"].create(
+            {
+                "order_id": order.id,
+                "jamaah_id": self._create_jamaah("302").id,
+                "room_type": "triple",
+            }
+        )
+        order.action_confirm()
+
+        with self.assertRaises(UserError):
+            order.action_refresh_travel_prices()
+        with self.assertRaises(UserError):
+            order.write({"departure_id": False})
+        with self.assertRaises(UserError):
+            order.write({"is_travel_booking": False})
+
+    def test_manager_price_override_after_confirmation_syncs_line_and_chatter(self):
+        manager = self.env["res.users"].create(
+            {
+                "name": "Synthetic Booking Manager",
+                "login": "phase2-booking-manager",
+                "email": "phase2-booking-manager@example.test",
+                "groups_id": [
+                    Command.set(
+                        [
+                            self.env.ref("base.group_user").id,
+                            self.env.ref(
+                                "travel_umroh.group_travel_manager"
+                            ).id,
+                        ]
+                    )
+                ],
+            }
+        )
+        order = self._create_order(user_id=manager.id)
+        participant = self.env["travel.booking.participant"].create(
+            {
+                "order_id": order.id,
+                "jamaah_id": self._create_jamaah("303").id,
+                "room_type": "double",
+            }
+        )
+        order.action_confirm()
+
+        participant.with_user(manager).write({"unit_price": 36_000_000})
+
+        self.assertEqual(participant.unit_price, 36_000_000)
+        self.assertEqual(participant.sale_line_id.price_unit, 36_000_000)
+        self.assertTrue(
+            order.message_ids.filtered(
+                lambda message: "Override harga participant"
+                in (message.body or "")
+            )
+        )
+
+    def test_manager_post_confirmation_correction_is_synchronized_and_audited(self):
+        manager = self.env["res.users"].create(
+            {
+                "name": "Synthetic Correction Manager",
+                "login": "phase2-correction-manager",
+                "email": "phase2-correction-manager@example.test",
+                "groups_id": [
+                    Command.set(
+                        [
+                            self.env.ref("base.group_user").id,
+                            self.env.ref(
+                                "travel_umroh.group_travel_manager"
+                            ).id,
+                        ]
+                    )
+                ],
+            }
+        )
+        order = self._create_order(user_id=manager.id)
+        old_jamaah = self._create_jamaah("305")
+        new_jamaah = self._create_jamaah("306")
+        participant = self.env["travel.booking.participant"].create(
+            {
+                "order_id": order.id,
+                "jamaah_id": old_jamaah.id,
+                "room_type": "quad",
+            }
+        )
+        order.action_confirm()
+
+        participant.with_user(manager).write(
+            {"jamaah_id": new_jamaah.id, "room_type": "double"}
+        )
+
+        self.assertEqual(participant.unit_price, 35_000_000)
+        self.assertIn(new_jamaah.name, participant.sale_line_id.name)
+        audit_messages = order.message_ids.filtered(
+            lambda message: "Koreksi participant" in (message.body or "")
+        )
+        self.assertTrue(audit_messages)
+        self.assertIn(old_jamaah.name, audit_messages[0].body)
+        self.assertIn(new_jamaah.name, audit_messages[0].body)
+
+    def test_staff_cannot_override_price_or_correct_after_confirmation(self):
+        staff = self.env["res.users"].create(
+            {
+                "name": "Synthetic Booking Staff",
+                "login": "phase2-booking-staff",
+                "email": "phase2-booking-staff@example.test",
+                "groups_id": [
+                    Command.set(
+                        [
+                            self.env.ref("base.group_user").id,
+                            self.env.ref(
+                                "travel_umroh.group_travel_staff"
+                            ).id,
+                        ]
+                    )
+                ],
+            }
+        )
+        order = self._create_order(user_id=staff.id)
+        participant = self.env["travel.booking.participant"].with_user(
+            staff
+        ).create(
+            {
+                "order_id": order.id,
+                "jamaah_id": self._create_jamaah("304").id,
+                "room_type": "quad",
+            }
+        )
+        with self.assertRaises(AccessError):
+            participant.with_user(staff).write({"unit_price": 1})
+
+        order.with_user(staff).action_confirm()
+
+        with self.assertRaises(AccessError):
+            participant.with_user(staff).write({"room_type": "double"})
+        with self.assertRaises(AccessError):
+            participant.with_user(staff).unlink()
+
+    def test_travel_edit_helpers_follow_state_and_manager_role(self):
+        manager = self.env["res.users"].create(
+            {
+                "name": "Synthetic Helper Manager",
+                "login": "phase2-helper-manager",
+                "email": "phase2-helper-manager@example.test",
+                "groups_id": [
+                    Command.set(
+                        [
+                            self.env.ref("base.group_user").id,
+                            self.env.ref(
+                                "travel_umroh.group_travel_manager"
+                            ).id,
+                        ]
+                    )
+                ],
+            }
+        )
+        order = self._create_order(user_id=manager.id)
+        participant = self.env["travel.booking.participant"].create(
+            {
+                "order_id": order.id,
+                "jamaah_id": self._create_jamaah("307").id,
+                "room_type": "quad",
+            }
+        )
+
+        self.assertTrue(order.can_edit_travel_participants)
+        self.assertTrue(order.with_user(manager).can_override_travel_price)
+        self.assertTrue(
+            participant.with_user(manager).can_override_price
+        )
+        order.action_confirm()
+        self.assertTrue(
+            order.with_user(manager).can_edit_travel_participants
+        )

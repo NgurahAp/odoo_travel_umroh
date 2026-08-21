@@ -35,13 +35,45 @@ class SaleOrder(models.Model):
     participant_count = fields.Integer(
         string="Jumlah Participant", compute="_compute_participant_count"
     )
+    can_edit_travel_participants = fields.Boolean(
+        compute="_compute_travel_edit_helpers"
+    )
+    can_override_travel_price = fields.Boolean(
+        compute="_compute_travel_edit_helpers"
+    )
 
     @api.depends("participant_ids")
     def _compute_participant_count(self):
         for order in self:
             order.participant_count = len(order.participant_ids)
 
+    @api.depends("state")
+    @api.depends_context("uid")
+    def _compute_travel_edit_helpers(self):
+        is_manager = self.env.user.has_group(
+            "travel_umroh.group_travel_manager"
+        )
+        for order in self:
+            order.can_edit_travel_participants = (
+                order.state in ("draft", "sent") or is_manager
+            )
+            order.can_override_travel_price = is_manager
+
     def write(self, values):
+        protected_travel_fields = {
+            "departure_id",
+            "is_travel_booking",
+        }
+        if protected_travel_fields.intersection(values) and self.filtered(
+            lambda order: order.is_travel_booking
+            and order.state not in ("draft", "sent")
+        ):
+            raise UserError(
+                _(
+                    "Keberangkatan dan status Booking Travel terkunci setelah "
+                    "quotation dikonfirmasi."
+                )
+            )
         if values.get("is_travel_booking") is False and self.filtered(
             lambda order: order.departure_id or order.participant_ids
         ):
@@ -70,6 +102,48 @@ class SaleOrder(models.Model):
             )
             travel_orders.action_refresh_travel_prices()
         return result
+
+    def action_confirm(self):
+        for order in self.filtered("is_travel_booking"):
+            departure = order.departure_id
+            if not departure or departure.state != "open" or not departure.active:
+                raise UserError(
+                    _(
+                        "Booking Travel harus memiliki keberangkatan aktif "
+                        "berstatus Dibuka sebelum dikonfirmasi."
+                    )
+                )
+            if not order.participant_ids:
+                raise UserError(
+                    _(
+                        "Tambahkan minimal satu participant sebelum Booking "
+                        "Travel dikonfirmasi."
+                    )
+                )
+            expected_product = order.travel_package_id.product_id
+            for participant in order.participant_ids:
+                line = participant.sale_line_id
+                if (
+                    not line.exists()
+                    or line.order_id != order
+                    or line.travel_participant_id != participant
+                    or line.product_id != expected_product
+                    or line.product_uom != expected_product.uom_id
+                    or line.product_uom_qty != 1
+                    or order.currency_id.compare_amounts(
+                        line.price_unit, participant.unit_price
+                    )
+                    != 0
+                ):
+                    raise UserError(
+                        _(
+                            "Baris Sales untuk participant %(participant)s "
+                            "tidak sinkron. Perbaiki quotation sebelum "
+                            "dikonfirmasi.",
+                            participant=participant.jamaah_id.name,
+                        )
+                    )
+        return super().action_confirm()
 
     def action_refresh_travel_prices(self):
         for order in self:

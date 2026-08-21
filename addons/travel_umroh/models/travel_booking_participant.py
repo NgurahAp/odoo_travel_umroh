@@ -1,5 +1,5 @@
 from odoo import _, api, fields, models
-from odoo.exceptions import UserError
+from odoo.exceptions import AccessError, UserError
 
 
 class TravelBookingParticipant(models.Model):
@@ -47,6 +47,9 @@ class TravelBookingParticipant(models.Model):
         copy=False,
         ondelete="set null",
     )
+    can_override_price = fields.Boolean(
+        compute="_compute_can_override_price"
+    )
 
     _sql_constraints = [
         (
@@ -67,6 +70,7 @@ class TravelBookingParticipant(models.Model):
         for incoming_values in vals_list:
             values = dict(incoming_values)
             order = self.env["sale.order"].browse(values.get("order_id"))
+            self._ensure_order_mutation_allowed(order)
             room_type = values.get("room_type")
             departure_price = self._get_departure_price(order, room_type)
             values["unit_price"] = departure_price.price
@@ -82,9 +86,31 @@ class TravelBookingParticipant(models.Model):
             super(TravelBookingParticipant, participant).write(
                 {"sale_line_id": line.id}
             )
+            if participant.order_id.state not in ("draft", "sent"):
+                participant.order_id.message_post(
+                    body=_(
+                        "Koreksi participant oleh Manager: %(jamaah)s "
+                        "ditambahkan dengan kamar %(room)s dan harga %(price)s.",
+                        jamaah=participant.jamaah_id.name,
+                        room=participant._room_label(),
+                        price=participant._price_label(),
+                    )
+                )
         return participants
 
     def unlink(self):
+        for participant in self:
+            self._ensure_order_mutation_allowed(participant.order_id)
+            if participant.order_id.state not in ("draft", "sent"):
+                participant.order_id.message_post(
+                    body=_(
+                        "Koreksi participant oleh Manager: %(jamaah)s "
+                        "dihapus (kamar %(room)s, harga %(price)s).",
+                        jamaah=participant.jamaah_id.name,
+                        room=participant._room_label(),
+                        price=participant._price_label(),
+                    )
+                )
         lines = self.mapped("sale_line_id")
         result = super().unlink()
         if lines:
@@ -96,20 +122,92 @@ class TravelBookingParticipant(models.Model):
             raise UserError(
                 _("Participant tidak dapat dipindahkan ke booking lain.")
             )
-        if "unit_price" in values:
-            raise UserError(
-                _(
-                    "Harga snapshot tidak dapat diubah langsung. Gunakan "
-                    "aksi Perbarui Harga Travel pada booking."
-                )
+        is_manager = self.env.user.has_group(
+            "travel_umroh.group_travel_manager"
+        )
+        for participant in self:
+            self._ensure_order_mutation_allowed(participant.order_id)
+        if "unit_price" in values and not is_manager:
+            raise AccessError(
+                _("Hanya Manager Travel Umroh yang dapat override harga.")
             )
 
+        old_values = {
+            participant.id: {
+                "jamaah": participant.jamaah_id.name,
+                "room": participant._room_label(),
+                "price": participant._price_label(),
+                "confirmed": participant.order_id.state
+                not in ("draft", "sent"),
+            }
+            for participant in self
+        }
+
         result = super().write(values)
-        if "room_type" in values:
+        if "unit_price" in values:
+            self._sync_sale_line()
+        elif "room_type" in values:
             self._refresh_from_departure_price()
         elif "jamaah_id" in values:
             self._sync_sale_line()
+
+        audited_fields = {"jamaah_id", "room_type", "unit_price"}
+        if audited_fields.intersection(values):
+            for participant in self:
+                previous = old_values[participant.id]
+                if previous["confirmed"] or "unit_price" in values:
+                    operation_label = (
+                        _("Override harga participant")
+                        if "unit_price" in values
+                        else _("Koreksi participant")
+                    )
+                    participant.order_id.message_post(
+                        body=_(
+                            "%(operation)s oleh Manager: %(old_jamaah)s / "
+                            "%(old_room)s / %(old_price)s menjadi "
+                            "%(new_jamaah)s / %(new_room)s / %(new_price)s.",
+                            operation=operation_label,
+                            old_jamaah=previous["jamaah"],
+                            old_room=previous["room"],
+                            old_price=previous["price"],
+                            new_jamaah=participant.jamaah_id.name,
+                            new_room=participant._room_label(),
+                            new_price=participant._price_label(),
+                        )
+                    )
         return result
+
+    @api.depends_context("uid")
+    def _compute_can_override_price(self):
+        is_manager = self.env.user.has_group(
+            "travel_umroh.group_travel_manager"
+        )
+        for participant in self:
+            participant.can_override_price = is_manager
+
+    @api.model
+    def _ensure_order_mutation_allowed(self, order):
+        if not order.exists():
+            raise UserError(_("Booking participant tidak ditemukan."))
+        if order.state not in ("draft", "sent") and not self.env.user.has_group(
+            "travel_umroh.group_travel_manager"
+        ):
+            raise AccessError(
+                _(
+                    "Participant terkunci setelah konfirmasi. Hanya Manager "
+                    "Travel Umroh yang dapat melakukan koreksi."
+                )
+            )
+
+    def _room_label(self):
+        self.ensure_one()
+        return dict(self._fields["room_type"].selection).get(
+            self.room_type, self.room_type or "-"
+        )
+
+    def _price_label(self):
+        self.ensure_one()
+        return self.currency_id.format(self.unit_price)
 
     @api.model
     def _get_departure_price(self, order, room_type):
