@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_travel_root" name="Travel Umroh" sequence="60" groups="travel_umroh.group_travel_staff,travel_umroh.group_travel_finance,travel_umroh.group_travel_manager"/>
+
+    <menuitem id="menu_travel_package" name="Paket" parent="menu_travel_root" action="action_travel_package" sequence="30"/>
+    <menuitem id="menu_travel_departure" name="Keberangkatan" parent="menu_travel_root" action="action_travel_departure" sequence="40"/>
+
+    <menuitem id="menu_travel_configuration" name="Konfigurasi" parent="menu_travel_root" sequence="90" groups="travel_umroh.group_travel_manager"/>
+    <menuitem id="menu_travel_airline" name="Maskapai" parent="menu_travel_configuration" action="action_travel_airline" sequence="10" groups="travel_umroh.group_travel_manager"/>
+    <menuitem id="menu_travel_airport" name="Bandara" parent="menu_travel_configuration" action="action_travel_airport" sequence="20" groups="travel_umroh.group_travel_manager"/>
+    <menuitem id="menu_travel_hotel" name="Hotel" parent="menu_travel_configuration" action="action_travel_hotel" sequence="30" groups="travel_umroh.group_travel_manager"/>
+</odoo>

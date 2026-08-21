@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="module_category_travel_umroh" model="ir.module.category">
+        <field name="name">Travel Umroh</field>
+        <field name="description">Kelola konfigurasi dan operasional Travel Umroh.</field>
+        <field name="sequence">35</field>
+    </record>
+
+    <record id="group_travel_staff" model="res.groups">
+        <field name="name">Staff</field>
+        <field name="category_id" ref="module_category_travel_umroh"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+    <record id="group_travel_finance" model="res.groups">
+        <field name="name">Finance</field>
+        <field name="category_id" ref="module_category_travel_umroh"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+    <record id="group_travel_manager" model="res.groups">
+        <field name="name">Manager</field>
+        <field name="category_id" ref="module_category_travel_umroh"/>
+        <field name="implied_ids" eval="[(4, ref('group_travel_staff')), (4, ref('group_travel_finance'))]"/>
+    </record>
+</odoo>

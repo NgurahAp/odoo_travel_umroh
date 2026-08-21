@@ -1,0 +1,26 @@
+{
+    "name": "Travel Umroh",
+    "summary": "Manage Umroh packages, departures, jamaah, and bookings",
+    "version": "18.0.1.0.0",
+    "category": "Services",
+    "license": "LGPL-3",
+    "depends": [
+        "base",
+        "contacts",
+        "mail",
+        "product",
+        "sale_management",
+        "account",
+    ],
+    "data": [
+        "security/travel_security.xml",
+        "security/ir.model.access.csv",
+        "views/res_users_views.xml",
+        "views/travel_master_views.xml",
+        "views/travel_package_views.xml",
+        "views/travel_departure_views.xml",
+        "views/travel_menus.xml",
+    ],
+    "application": True,
+    "installable": True,
+}

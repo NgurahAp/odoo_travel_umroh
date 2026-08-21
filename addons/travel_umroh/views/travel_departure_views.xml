@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_travel_departure_list" model="ir.ui.view">
+        <field name="name">travel.departure.list</field>
+        <field name="model">travel.departure</field>
+        <field name="arch" type="xml">
+            <list string="Keberangkatan">
+                <field name="name"/>
+                <field name="package_id"/>
+                <field name="departure_date"/>
+                <field name="return_date"/>
+                <field name="quota"/>
+                <field name="currency_id"/>
+                <field name="state" widget="badge"/>
+                <field name="active" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_travel_departure_form" model="ir.ui.view">
+        <field name="name">travel.departure.form</field>
+        <field name="model">travel.departure</field>
+        <field name="arch" type="xml">
+            <form string="Keberangkatan Umroh">
+                <header>
+                    <button name="action_open" type="object" string="Buka Keberangkatan" class="btn-primary" groups="travel_umroh.group_travel_manager" invisible="state != 'draft'"/>
+                    <button name="action_cancel" type="object" string="Batalkan" groups="travel_umroh.group_travel_manager" invisible="state not in ('draft', 'open')"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,open,departed,done,cancelled"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="package_id"/>
+                            <field name="departure_date"/>
+                            <field name="return_date"/>
+                        </group>
+                        <group>
+                            <field name="quota"/>
+                            <field name="company_id" options="{'no_create': True}"/>
+                            <field name="currency_id" readonly="1" options="{'no_create': True}"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Harga" name="pricing">
+                            <field name="price_ids">
+                                <list editable="bottom">
+                                    <field name="room_type"/>
+                                    <field name="price"/>
+                                    <field name="currency_id" readonly="1"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Penerbangan" name="flights">
+                            <field name="flight_ids">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="airline_id"/>
+                                    <field name="flight_number"/>
+                                    <field name="origin_airport_id"/>
+                                    <field name="origin_terminal" optional="show"/>
+                                    <field name="destination_airport_id"/>
+                                    <field name="destination_terminal" optional="show"/>
+                                    <field name="departure_datetime"/>
+                                    <field name="arrival_datetime"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Akomodasi" name="accommodations">
+                            <field name="accommodation_ids">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="hotel_id"/>
+                                    <field name="check_in"/>
+                                    <field name="check_out"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_travel_departure_search" model="ir.ui.view">
+        <field name="name">travel.departure.search</field>
+        <field name="model">travel.departure</field>
+        <field name="arch" type="xml">
+            <search string="Cari Keberangkatan">
+                <field name="name"/>
+                <field name="package_id"/>
+                <field name="departure_date"/>
+                <field name="state"/>
+                <separator/>
+                <filter name="draft" string="Draft" domain="[('state', '=', 'draft')]"/>
+                <filter name="open" string="Dibuka" domain="[('state', '=', 'open')]"/>
+                <filter name="cancelled" string="Dibatalkan" domain="[('state', '=', 'cancelled')]"/>
+                <filter name="archived" string="Diarsipkan" domain="[('active', '=', False)]" context="{'active_test': False}"/>
+                <group expand="0" string="Kelompokkan">
+                    <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+                    <filter name="group_package" string="Paket" context="{'group_by': 'package_id'}"/>
+                    <filter name="group_departure_month" string="Bulan Keberangkatan" context="{'group_by': 'departure_date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_travel_departure" model="ir.actions.act_window">
+        <field name="name">Keberangkatan</field>
+        <field name="res_model">travel.departure</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_travel_departure_search"/>
+    </record>
+</odoo>
