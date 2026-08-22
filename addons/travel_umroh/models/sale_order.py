@@ -8,6 +8,9 @@ from odoo.exceptions import AccessError, UserError, ValidationError
 _travel_state_transition = ContextVar(
     "travel_umroh_sale_state_transition", default=False
 )
+_travel_managed_cancel = ContextVar(
+    "travel_umroh_managed_cancel", default=False
+)
 
 
 @contextmanager
@@ -17,6 +20,15 @@ def _allow_travel_state_transition():
         yield
     finally:
         _travel_state_transition.reset(token)
+
+
+@contextmanager
+def _allow_travel_managed_cancel():
+    token = _travel_managed_cancel.set(True)
+    try:
+        yield
+    finally:
+        _travel_managed_cancel.reset(token)
 
 
 class SaleOrder(models.Model):
@@ -76,6 +88,11 @@ class SaleOrder(models.Model):
         copy=False,
         tracking=True,
     )
+    travel_requires_manager_cancel = fields.Boolean(
+        string="Wajib Pembatalan Manager",
+        compute="_compute_travel_requires_manager_cancel",
+        readonly=True,
+    )
     can_edit_travel_participants = fields.Boolean(
         compute="_compute_travel_edit_helpers"
     )
@@ -87,6 +104,20 @@ class SaleOrder(models.Model):
     def _compute_participant_count(self):
         for order in self:
             order.participant_count = len(order.participant_ids)
+
+    @api.depends(
+        "is_travel_booking",
+        "state",
+        "invoice_ids.state",
+        "invoice_ids.move_type",
+    )
+    def _compute_travel_requires_manager_cancel(self):
+        for order in self:
+            order.travel_requires_manager_cancel = (
+                order.is_travel_booking
+                and order.state == "sale"
+                and bool(order._travel_posted_customer_invoices())
+            )
 
     @api.depends(
         "is_travel_booking",
@@ -182,6 +213,7 @@ class SaleOrder(models.Model):
             "travel_payment_state",
             "seat_reserved",
             "seat_reserved_at",
+            "travel_requires_manager_cancel",
         }
         if protected_phase_three_fields.intersection(values):
             raise UserError(
@@ -289,6 +321,26 @@ class SaleOrder(models.Model):
             and not user.has_group("travel_umroh.group_travel_staff")
         )
 
+    def _travel_posted_customer_invoices(self):
+        return self.invoice_ids.filtered(
+            lambda invoice: invoice.state == "posted"
+            and invoice.move_type == "out_invoice"
+        )
+
+    def _check_travel_manager_cancel_access(self):
+        if not (
+            self.env.is_admin()
+            or self.env.user.has_group(
+                "travel_umroh.group_travel_manager"
+            )
+        ):
+            raise AccessError(
+                _(
+                    "Hanya Manager Travel Umroh yang dapat membatalkan "
+                    "booking setelah invoice DP diposting."
+                )
+            )
+
     def _travel_reserve_seats(self):
         self.ensure_one()
         if (
@@ -361,6 +413,83 @@ class SaleOrder(models.Model):
         )
         return True
 
+    def _travel_release_seats(self):
+        self.ensure_one()
+        if not self.seat_reserved:
+            return False
+        if not self.departure_id:
+            raise UserError(
+                _("Booking Travel tidak memiliki keberangkatan.")
+            )
+
+        self.env["sale.order"].flush_model(
+            ["departure_id", "seat_reserved", "state"]
+        )
+        self.env.cr.execute(
+            "SELECT id FROM travel_departure WHERE id = %s FOR UPDATE",
+            [self.departure_id.id],
+        )
+        self.invalidate_recordset(["seat_reserved"])
+        if not self.seat_reserved:
+            return False
+
+        super(SaleOrder, self).write({"seat_reserved": False})
+        self.message_post(
+            body=_(
+                "%(count)s kursi dilepas dari keberangkatan %(departure)s "
+                "setelah booking dibatalkan.",
+                count=len(self.participant_ids),
+                departure=self.departure_id.display_name,
+            )
+        )
+        return True
+
+    def action_open_travel_cancel_wizard(self):
+        self.ensure_one()
+        self._check_travel_manager_cancel_access()
+        if (
+            not self.is_travel_booking
+            or self.state != "sale"
+            or not self._travel_posted_customer_invoices()
+        ):
+            raise UserError(
+                _(
+                    "Pembatalan setelah DP hanya tersedia untuk Booking "
+                    "Travel terkonfirmasi dengan invoice pelanggan posted."
+                )
+            )
+        action = self.env["ir.actions.actions"]._for_xml_id(
+            "travel_umroh.action_travel_booking_cancel_wizard"
+        )
+        action["context"] = {"default_order_id": self.id}
+        return action
+
+    def _travel_cancel_after_dp(self, reason):
+        self.ensure_one()
+        self._check_travel_manager_cancel_access()
+        reason = (reason or "").strip()
+        if not reason:
+            raise UserError(_("Alasan pembatalan wajib diisi."))
+        if (
+            not self.is_travel_booking
+            or self.state != "sale"
+            or not self._travel_posted_customer_invoices()
+        ):
+            raise UserError(
+                _(
+                    "Booking harus terkonfirmasi dan memiliki invoice "
+                    "pelanggan posted sebelum pembatalan terkelola."
+                )
+            )
+
+        self.message_post(
+            body=_("Alasan pembatalan setelah DP: %(reason)s", reason=reason)
+        )
+        with _allow_travel_managed_cancel():
+            self._action_cancel()
+        self._travel_release_seats()
+        return True
+
     def action_confirm(self):
         for order in self.filtered("is_travel_booking"):
             departure = order.departure_id
@@ -417,8 +546,35 @@ class SaleOrder(models.Model):
             return super().action_confirm()
 
     def _action_cancel(self):
+        managed_orders = self.filtered(
+            lambda order: order.is_travel_booking
+            and order._travel_posted_customer_invoices()
+        )
+        if managed_orders and not _travel_managed_cancel.get():
+            raise UserError(
+                _(
+                    "Booking Travel dengan invoice pelanggan posted hanya "
+                    "dapat dibatalkan oleh Manager melalui aksi "
+                    "'Batalkan setelah DP'."
+                )
+            )
         with _allow_travel_state_transition():
             return super()._action_cancel()
+
+    def action_cancel(self):
+        managed_orders = self.filtered(
+            lambda order: order.is_travel_booking
+            and order._travel_posted_customer_invoices()
+        )
+        if managed_orders and not _travel_managed_cancel.get():
+            raise UserError(
+                _(
+                    "Booking Travel dengan invoice pelanggan posted hanya "
+                    "dapat dibatalkan oleh Manager melalui aksi "
+                    "'Batalkan setelah DP'."
+                )
+            )
+        return super().action_cancel()
 
     def action_draft(self):
         if self.filtered("is_travel_booking"):

@@ -10,5 +10,6 @@ from . import test_phase3_security
 from . import test_phase3_accounting
 from . import test_phase3_quota
 from . import test_phase3_concurrency
+from . import test_phase3_cancellation
 from . import test_security
 from . import test_views
