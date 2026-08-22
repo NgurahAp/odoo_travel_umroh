@@ -35,6 +35,47 @@ class TestTravelPaymentState(TravelAccountingCase):
         order.invalidate_recordset(["invoice_ids", "invoice_status"])
         return (order.invoice_ids - existing_invoices).ensure_one()
 
+    def _paid_booking(self, suffix):
+        order = self._confirmed_booking(suffix, participant_count=2)
+        downpayment_invoice = self._create_downpayment_invoice(order)
+        self._post_and_pay(downpayment_invoice)
+        final_invoice = self._create_final_invoice(order)
+        self._post_and_pay(final_invoice)
+        order.invalidate_recordset(
+            ["invoice_ids", "invoice_status", "travel_payment_state"]
+        )
+        return order, downpayment_invoice, final_invoice
+
+    def _cancel_after_dp(self, order, reason):
+        (
+            self.env["travel.booking.cancel.wizard"]
+            .with_user(self.manager)
+            .create({"order_id": order.id, "reason": reason})
+            .action_confirm_cancel()
+        )
+        order.invalidate_recordset(["state", "seat_reserved"])
+
+    def _reverse_invoice(self, invoice, reason):
+        reversal = (
+            self.env["account.move.reversal"]
+            .with_user(self.finance)
+            .with_context(
+                active_model="account.move",
+                active_ids=invoice.ids,
+            )
+            .create(
+                {
+                    "reason": reason,
+                    "journal_id": invoice.journal_id.id,
+                }
+            )
+        )
+        reversal.refund_moves()
+        refund = reversal.new_move_ids.ensure_one()
+        if refund.state == "draft":
+            refund.with_user(self.finance).action_post()
+        return refund
+
     def test_confirmed_booking_without_posted_invoice_is_unpaid(self):
         order = self._confirmed_booking("PAY-NONE")
 
@@ -159,6 +200,100 @@ class TestTravelPaymentState(TravelAccountingCase):
         )
 
         self.assertGreater(final_invoice.amount_residual, 0)
+        self.assertEqual(order.travel_payment_state, "dp")
+
+    def test_standard_credit_notes_and_refund_payment_reach_refunded(self):
+        order, downpayment_invoice, final_invoice = self._paid_booking(
+            "PAY-REFUND"
+        )
+        original_invoices = downpayment_invoice | final_invoice
+        self.assertEqual(order.travel_payment_state, "paid")
+        self.assertEqual(self.departure.reserved_seats, 2)
+
+        self._cancel_after_dp(
+            order, "Jamaah membatalkan seluruh perjalanan"
+        )
+        self.assertEqual(order.state, "cancel")
+        self.assertFalse(order.seat_reserved)
+        self.assertEqual(self.departure.reserved_seats, 0)
+        self.assertTrue(original_invoices <= order.invoice_ids)
+
+        refunds = self.env["account.move"]
+        for invoice in original_invoices:
+            refunds |= self._reverse_invoice(
+                invoice, f"Refund penuh {invoice.name}"
+            )
+
+        order.invalidate_recordset(["invoice_ids", "travel_payment_state"])
+        refunds.invalidate_recordset(["amount_residual", "payment_state"])
+        self.assertTrue(all(refund.amount_residual for refund in refunds))
+        self.assertNotEqual(order.travel_payment_state, "refunded")
+
+        for refund in refunds:
+            self._pay_invoice(refund)
+
+        order.invalidate_recordset(["invoice_ids", "travel_payment_state"])
+        order.invoice_ids.invalidate_recordset(
+            ["amount_residual", "payment_state"]
+        )
+        invoice_total = sum(original_invoices.mapped("amount_total"))
+        refund_total = sum(refunds.mapped("amount_total"))
+
+        self.assertEqual(
+            order.currency_id.compare_amounts(invoice_total, refund_total),
+            0,
+        )
+        self.assertTrue(
+            all(
+                order.currency_id.is_zero(move.amount_residual)
+                for move in original_invoices | refunds
+            )
+        )
+        self.assertEqual(order.travel_payment_state, "refunded")
+        self.assertFalse(order.seat_reserved)
+        self.assertEqual(self.departure.reserved_seats, 0)
+
+        order.invalidate_recordset(["travel_payment_state", "seat_reserved"])
+        self.departure.invalidate_recordset(["reserved_seats"])
+        self.assertEqual(order.travel_payment_state, "refunded")
+        self.assertFalse(order.seat_reserved)
+        self.assertEqual(self.departure.reserved_seats, 0)
+
+    def test_partial_credit_note_falls_back_to_dp(self):
+        order, _downpayment_invoice, final_invoice = self._paid_booking(
+            "PAY-PARTIAL-CREDIT"
+        )
+        self._cancel_after_dp(order, "Refund hanya pelunasan")
+        partial_refund = self._reverse_invoice(
+            final_invoice, "Credit note parsial terhadap total booking"
+        )
+        self._pay_invoice(partial_refund)
+        order.invalidate_recordset(["invoice_ids", "travel_payment_state"])
+
+        self.assertEqual(order.travel_payment_state, "dp")
+        self.assertNotEqual(order.travel_payment_state, "paid")
+        self.assertNotEqual(order.travel_payment_state, "refunded")
+
+    def test_full_unpaid_or_partially_paid_refund_remains_dp(self):
+        order, downpayment_invoice, final_invoice = self._paid_booking(
+            "PAY-UNPAID-REFUND"
+        )
+        self._cancel_after_dp(order, "Refund menunggu pembayaran keluar")
+        downpayment_refund = self._reverse_invoice(
+            downpayment_invoice, "Refund DP"
+        )
+        final_refund = self._reverse_invoice(final_invoice, "Refund pelunasan")
+        order.invalidate_recordset(["invoice_ids", "travel_payment_state"])
+
+        self.assertEqual(order.travel_payment_state, "dp")
+        self.assertGreater(downpayment_refund.amount_residual, 0)
+        self.assertGreater(final_refund.amount_residual, 0)
+
+        self._pay_invoice(final_refund)
+        order.invalidate_recordset(["invoice_ids", "travel_payment_state"])
+        downpayment_refund.invalidate_recordset(["amount_residual"])
+
+        self.assertGreater(downpayment_refund.amount_residual, 0)
         self.assertEqual(order.travel_payment_state, "dp")
 
     def test_ordinary_sales_order_has_no_travel_payment_state(self):
