@@ -572,7 +572,7 @@ The search view must include searchable `departure_id`, `travel_package_id`, `or
 - `active_manifest`: `[('booking_state', '!=', 'cancel')]`;
 - `reserved_only`: `[('seat_reserved', '=', True)]`;
 - `documents_incomplete`, `documents_pending`, `documents_verified`;
-- group by departure, package, booking, room type, document status, payment status, and gender.
+- group by departure, package, booking, room type, document status, and payment status. Keep gender as a visible/searchable non-stored related value; do not group by it because Odoo analytical grouping requires a stored field and Phase 4 intentionally avoids duplicating identity attributes.
 
 Define `action_travel_manifest` with fixed domain `[('order_id.is_travel_booking', '=', True)]`, `view_mode="list"`, explicit Manifest list/search views, and context `{'search_default_active_manifest': 1}`. Add `menu_travel_manifest` sequence 40 under Reporting with the same explicit Staff, Finance, and Manager groups as the other operational reports.
 

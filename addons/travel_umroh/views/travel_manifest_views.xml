@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_travel_manifest_list" model="ir.ui.view">
+        <field name="name">travel.manifest.list</field>
+        <field name="model">travel.booking.participant</field>
+        <field name="arch" type="xml">
+            <list string="Manifest Jamaah" create="0" edit="0" delete="0" default_order="departure_id,order_id,jamaah_id">
+                <field name="departure_id"/>
+                <field name="travel_package_id"/>
+                <field name="order_id"/>
+                <field name="jamaah_id"/>
+                <field name="jamaah_nik" optional="show"/>
+                <field name="jamaah_phone" optional="show"/>
+                <field name="jamaah_gender" optional="show"/>
+                <field name="room_type"/>
+                <field name="passport_number" optional="show"/>
+                <field name="passport_expiry" optional="show"/>
+                <field name="document_status" widget="badge"/>
+                <field name="travel_payment_state" widget="badge"/>
+                <field name="seat_reserved"/>
+                <field name="booking_state" widget="badge" optional="hide"/>
+                <field name="travel_state" widget="badge" optional="hide"/>
+                <field name="unit_price" optional="hide"/>
+                <field name="currency_id" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_travel_manifest_search" model="ir.ui.view">
+        <field name="name">travel.manifest.search</field>
+        <field name="model">travel.booking.participant</field>
+        <field name="arch" type="xml">
+            <search string="Cari Manifest Jamaah">
+                <field name="departure_id"/>
+                <field name="travel_package_id"/>
+                <field name="order_id"/>
+                <field name="jamaah_id"/>
+                <field name="jamaah_nik"/>
+                <field name="passport_number"/>
+                <separator/>
+                <filter name="active_manifest" string="Booking Aktif" domain="[('booking_state', '!=', 'cancel')]"/>
+                <filter name="reserved_only" string="Kursi Direservasi" domain="[('seat_reserved', '=', True)]"/>
+                <filter name="documents_incomplete" string="Dokumen Belum Lengkap" domain="[('document_status', '=', 'incomplete')]"/>
+                <filter name="documents_pending" string="Dokumen Menunggu Verifikasi" domain="[('document_status', '=', 'pending')]"/>
+                <filter name="documents_verified" string="Dokumen Terverifikasi" domain="[('document_status', '=', 'verified')]"/>
+                <group expand="0" string="Kelompokkan">
+                    <filter name="group_departure" string="Keberangkatan" context="{'group_by': 'departure_id'}"/>
+                    <filter name="group_package" string="Paket" context="{'group_by': 'travel_package_id'}"/>
+                    <filter name="group_booking" string="Booking" context="{'group_by': 'order_id'}"/>
+                    <filter name="group_room_type" string="Tipe Kamar" context="{'group_by': 'room_type'}"/>
+                    <filter name="group_document_status" string="Status Dokumen" context="{'group_by': 'document_status'}"/>
+                    <filter name="group_payment_status" string="Status Pembayaran" context="{'group_by': 'travel_payment_state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_travel_manifest" model="ir.actions.act_window">
+        <field name="name">Manifest Jamaah</field>
+        <field name="res_model">travel.booking.participant</field>
+        <field name="view_mode">list</field>
+        <field name="domain">[('order_id.is_travel_booking', '=', True)]</field>
+        <field name="context">{'search_default_active_manifest': 1}</field>
+        <field name="search_view_id" ref="view_travel_manifest_search"/>
+        <field name="view_id" ref="view_travel_manifest_list"/>
+    </record>
+</odoo>

@@ -11,6 +11,7 @@
     <menuitem id="menu_travel_booking_report" name="Booking &amp; Penjualan" parent="menu_travel_reporting" action="action_travel_booking_report" sequence="10" groups="travel_umroh.group_travel_staff,travel_umroh.group_travel_finance,travel_umroh.group_travel_manager"/>
     <menuitem id="menu_travel_capacity_report" name="Kapasitas Keberangkatan" parent="menu_travel_reporting" action="action_travel_capacity_report" sequence="20" groups="travel_umroh.group_travel_staff,travel_umroh.group_travel_finance,travel_umroh.group_travel_manager"/>
     <menuitem id="menu_travel_document_report" name="Status Dokumen" parent="menu_travel_reporting" action="action_travel_document_report" sequence="30" groups="travel_umroh.group_travel_staff,travel_umroh.group_travel_finance,travel_umroh.group_travel_manager"/>
+    <menuitem id="menu_travel_manifest" name="Manifest Jamaah" parent="menu_travel_reporting" action="action_travel_manifest" sequence="40" groups="travel_umroh.group_travel_staff,travel_umroh.group_travel_finance,travel_umroh.group_travel_manager"/>
     <menuitem id="menu_travel_receivable_report" name="Sisa Tagihan" parent="menu_travel_reporting" action="account.action_move_out_invoice_type" sequence="50" groups="travel_umroh.group_travel_finance,travel_umroh.group_travel_manager"/>
 
     <menuitem id="menu_travel_configuration" name="Konfigurasi" parent="menu_travel_root" sequence="90" groups="travel_umroh.group_travel_manager"/>

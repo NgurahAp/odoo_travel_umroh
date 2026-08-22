@@ -24,6 +24,7 @@
         "views/travel_departure_views.xml",
         "views/travel_reporting_booking_views.xml",
         "views/travel_reporting_operations_views.xml",
+        "views/travel_manifest_views.xml",
         "views/travel_menus.xml",
     ],
     "application": True,

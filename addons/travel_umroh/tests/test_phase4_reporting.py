@@ -1,5 +1,6 @@
 from lxml import etree
 
+from odoo.exceptions import AccessError
 from odoo.tests import tagged
 from odoo.tools.safe_eval import safe_eval
 
@@ -238,3 +239,134 @@ class TestPhaseFourReporting(TravelAccountingCase):
             "travel_umroh.menu_travel_document_report",
         ):
             self.assertEqual(set(self.env.ref(xmlid).groups_id.ids), group_ids)
+
+    def test_manifest_is_noneditable_and_scoped_to_travel_participants(self):
+        action = self.env.ref("travel_umroh.action_travel_manifest")
+        self.assertEqual(action.res_model, "travel.booking.participant")
+        self.assertEqual(action.view_mode, "list")
+        action_domain = safe_eval(action.domain)
+        self.assertEqual(
+            action_domain,
+            [("order_id.is_travel_booking", "=", True)],
+        )
+        self.assertEqual(
+            safe_eval(action.context).get("search_default_active_manifest"),
+            1,
+        )
+
+        root = self._view_root("travel_umroh.view_travel_manifest_list")
+        self.assertEqual(root.get("create"), "0")
+        self.assertEqual(root.get("edit"), "0")
+        self.assertEqual(root.get("delete"), "0")
+        for field_name in (
+            "departure_id",
+            "travel_package_id",
+            "order_id",
+            "jamaah_id",
+            "jamaah_nik",
+            "jamaah_phone",
+            "jamaah_gender",
+            "room_type",
+            "passport_number",
+            "passport_expiry",
+            "document_status",
+            "travel_payment_state",
+            "seat_reserved",
+        ):
+            self.assertTrue(
+                root.xpath(f"//field[@name='{field_name}']"),
+                field_name,
+            )
+        self.assertFalse(root.xpath("//field[@name='ktp_file']"))
+        self.assertFalse(root.xpath("//field[@name='passport_file']"))
+
+        search = self._view_root("travel_umroh.view_travel_manifest_search")
+        for filter_name in (
+            "active_manifest",
+            "reserved_only",
+            "documents_incomplete",
+            "documents_pending",
+            "documents_verified",
+            "group_departure",
+            "group_package",
+            "group_booking",
+            "group_room_type",
+            "group_document_status",
+            "group_payment_status",
+        ):
+            self.assertTrue(
+                search.xpath(f"//filter[@name='{filter_name}']"),
+                filter_name,
+            )
+
+    def test_manifest_default_filter_hides_cancelled_but_keeps_history(self):
+        active_order = self._confirmed_booking("PHASE4-MANIFEST-ACTIVE")
+        cancelled_order = self._confirmed_booking("PHASE4-MANIFEST-CANCEL")
+        result = cancelled_order.with_user(self.staff).action_cancel()
+        if isinstance(result, dict) and result.get("res_model") == (
+            "sale.order.cancel"
+        ):
+            self.env["sale.order.cancel"].with_user(self.staff).with_context(
+                **result["context"]
+            ).create({"order_id": cancelled_order.id}).action_cancel()
+        cancelled_order.invalidate_recordset(["state"])
+        self.assertEqual(cancelled_order.state, "cancel")
+
+        action = self.env.ref("travel_umroh.action_travel_manifest")
+        action_domain = safe_eval(action.domain)
+        all_participants = self.env[
+            "travel.booking.participant"
+        ].with_user(self.staff).search(
+            action_domain
+            + [("order_id", "in", (active_order.id, cancelled_order.id))]
+        )
+        self.assertEqual(
+            set(all_participants.ids),
+            set((active_order | cancelled_order).participant_ids.ids),
+        )
+
+        search = self._view_root("travel_umroh.view_travel_manifest_search")
+        active_domain = safe_eval(
+            search.xpath("//filter[@name='active_manifest']")[0].get(
+                "domain"
+            )
+        )
+        active_participants = self.env[
+            "travel.booking.participant"
+        ].with_user(self.staff).search(
+            action_domain
+            + active_domain
+            + [("order_id", "in", (active_order.id, cancelled_order.id))]
+        )
+        self.assertEqual(
+            active_participants.ids,
+            active_order.participant_ids.ids,
+        )
+
+    def test_manifest_read_access_does_not_grant_mutation(self):
+        order = self._confirmed_booking("PHASE4-MANIFEST-SECURITY")
+        participant = order.participant_ids.ensure_one()
+        for user in (self.staff, self.finance, self.manager):
+            self.assertIn(
+                participant,
+                self.env["travel.booking.participant"]
+                .with_user(user)
+                .search([("id", "=", participant.id)]),
+            )
+
+        with self.assertRaises(AccessError):
+            participant.with_user(self.staff).write({"room_type": "triple"})
+        with self.assertRaises(AccessError):
+            participant.with_user(self.finance).write({"room_type": "triple"})
+        with self.assertRaises(AccessError):
+            participant.with_user(self.finance).unlink()
+
+        manifest_menu = self.env.ref("travel_umroh.menu_travel_manifest")
+        self.assertEqual(
+            set(manifest_menu.groups_id.ids),
+            {
+                self.env.ref("travel_umroh.group_travel_staff").id,
+                self.env.ref("travel_umroh.group_travel_finance").id,
+                self.env.ref("travel_umroh.group_travel_manager").id,
+            },
+        )
