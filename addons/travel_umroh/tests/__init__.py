@@ -16,5 +16,6 @@ from . import test_phase3_views
 from . import test_phase4_reporting
 from . import test_phase4_demo
 from . import test_phase4_hardening
+from . import test_phase4_acceptance
 from . import test_security
 from . import test_views
