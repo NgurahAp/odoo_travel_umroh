@@ -1094,6 +1094,15 @@ docker compose run --rm odoo --stop-after-init \
 
 Expected: exactly one transaction reserves the last seat, the other receives the capacity business error, and cleanup removes only synthetic test records.
 
+Implementation note: the concurrency class is tagged `post_install`, `-at_install`,
+`-standard`, and `database_breaking`. Because `-standard` intentionally excludes it
+from the normal module suite, the executable focused selector is
+`--test-tags database_breaking`, not the class-path selector shown above. The test
+uses independent cursors/environments, accepts PostgreSQL's expected
+`SerializationFailure` for the losing repeatable-read transaction, retries that
+transaction, and then proves the server returns the capacity business error with
+`tersedia=0` and `dibutuhkan=1`.
+
 - [ ] **Step 4: Prove clean install on a never-used database**
 
 Check the proposed name first:
@@ -1221,6 +1230,7 @@ Do not begin reports, demo XML data, portal, or any Phase 4/5 work. Stop for rev
 
 **Create:**
 
+- `addons/travel_umroh/models/account_move.py`
 - `addons/travel_umroh/models/account_move_line.py`
 - `addons/travel_umroh/models/sale_advance_payment_inv.py`
 - `addons/travel_umroh/wizards/__init__.py`
@@ -1247,6 +1257,7 @@ Do not begin reports, demo XML data, portal, or any Phase 4/5 work. Stop for rev
 - `addons/travel_umroh/security/travel_security.xml`
 - `addons/travel_umroh/tests/__init__.py`
 - `addons/travel_umroh/tests/common.py`
+- `addons/travel_umroh/tests/test_booking.py`
 - `addons/travel_umroh/tests/test_security.py` only if role-selector regression coverage is kept with the existing tests
 - `addons/travel_umroh/views/travel_booking_views.xml`
 - `addons/travel_umroh/views/travel_departure_views.xml`
@@ -1260,3 +1271,32 @@ Do not begin reports, demo XML data, portal, or any Phase 4/5 work. Stop for rev
 - WhatsApp integration, payment gateway, manifest airline, room assignment, visa API, mobile application, multi-currency complexity, or custom accounting ledgers.
 
 These items must not appear in Phase 3 commits even if implementation makes them seem convenient.
+
+## Implementation Checkpoint — 2026-08-22
+
+The implementation stayed within Phase 3. Two actual-file differences from the
+planned inventory were recorded above: `models/account_move.py` was required to
+secure invoice posting and payment integration, and `tests/test_booking.py` was
+extended for the full-departure server regression. No requirement or deferred
+scope was added.
+
+Final verification used the never-before-used database
+`travel_umroh_phase3_acceptance_02`; no database was dropped or recreated:
+
+- clean install (`-i base,travel_umroh`, `/travel_umroh`): 167 post-tests / 199
+  Odoo test stats, 0 failed, 0 errors;
+- installed module state/version: `installed|18.0.3.0.0`;
+- module upgrade (`-u travel_umroh`, `/travel_umroh`): 167 post-tests / 199
+  Odoo test stats, 0 failed, 0 errors;
+- focused Staff/Finance/Manager accounting, cancellation, and lifecycle suite:
+  21 post-tests / 27 Odoo test stats, 0 failed, 0 errors;
+- dedicated `database_breaking` last-seat concurrency proof: 1 post-test / 3
+  Odoo test stats, 0 failed, 0 errors;
+- Python compilation used
+  `PYTHONPYCACHEPREFIX=/private/tmp/travel_umroh_phase3_pycache` so macOS would
+  not attempt to write bytecode outside the workspace; compilation passed.
+
+The standard `/travel_umroh` clean-install and upgrade suites intentionally omit
+the `database_breaking` test. It is always run separately at the checkpoint, as
+shown above, to keep the ordinary suite transaction-safe while retaining real
+PostgreSQL concurrency coverage.
