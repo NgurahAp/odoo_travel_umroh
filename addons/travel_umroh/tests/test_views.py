@@ -77,6 +77,47 @@ class TestTravelPhaseTwoViews(TravelBookingCase):
             "is_travel_booking", order_line_pages[0].get("invisible", "")
         )
 
+    def test_booking_customer_label_explains_the_buyer_role_only_for_travel(self):
+        root = self._staff_sale_form()
+        customer_fields = root.xpath(
+            "//group[@name='partner_details']/field[@name='partner_id']"
+        )
+        self.assertEqual(len(customer_fields), 2)
+
+        standard_customer = next(
+            field
+            for field in customer_fields
+            if field.get("string") != "Pemesan / Penanggung Jawab"
+        )
+        travel_customer = next(
+            field
+            for field in customer_fields
+            if field.get("string") == "Pemesan / Penanggung Jawab"
+        )
+
+        self.assertEqual(standard_customer.get("invisible"), "is_travel_booking")
+        self.assertEqual(
+            travel_customer.get("invisible"), "not is_travel_booking"
+        )
+        self.assertEqual(
+            travel_customer.get("placeholder"),
+            "Pilih kontak pemesan atau buat kontak baru...",
+        )
+
+    def test_jamaah_contact_field_explains_name_entry(self):
+        arch = self.env.ref("travel_umroh.view_travel_jamaah_form").arch_db
+        root = etree.fromstring(arch.encode())
+        title = root.xpath("//div[contains(@class, 'oe_title')]")[0]
+
+        self.assertEqual(
+            title.xpath("./label[@for='partner_id']/@string"),
+            ["Nama Jamaah / Kontak"],
+        )
+        self.assertEqual(
+            title.xpath("./h1/field[@name='partner_id']/@placeholder"),
+            ["Pilih kontak atau ketik nama Jamaah baru..."],
+        )
+
     def test_jamaah_binary_fields_and_manager_verification_controls(self):
         arch = self.env.ref("travel_umroh.view_travel_jamaah_form").arch_db
         root = etree.fromstring(arch.encode())
