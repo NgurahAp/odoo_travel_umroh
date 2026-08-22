@@ -27,6 +27,7 @@
         "views/travel_manifest_views.xml",
         "views/travel_menus.xml",
     ],
+    "demo": ["demo/travel_umroh_demo.xml"],
     "application": True,
     "installable": True,
 }

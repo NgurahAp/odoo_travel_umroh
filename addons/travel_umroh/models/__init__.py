@@ -12,6 +12,7 @@ from . import travel_departure
 from . import travel_departure_accommodation
 from . import travel_departure_flight
 from . import travel_departure_price
+from . import travel_demo
 from . import travel_hotel
 from . import travel_booking_participant
 from . import travel_jamaah

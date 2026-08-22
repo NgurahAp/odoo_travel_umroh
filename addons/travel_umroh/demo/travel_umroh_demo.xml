@@ -1,0 +1,324 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="demo_airline_saudia" model="travel.airline">
+        <field name="name">DEMO Saudia</field>
+        <field name="iata_code">SV</field>
+    </record>
+    <record id="demo_airline_garuda" model="travel.airline">
+        <field name="name">DEMO Garuda</field>
+        <field name="iata_code">GA</field>
+    </record>
+    <record id="demo_airline_emirates" model="travel.airline">
+        <field name="name">DEMO Emirates</field>
+        <field name="iata_code">EK</field>
+    </record>
+
+    <record id="demo_airport_cgk" model="travel.airport">
+        <field name="name">DEMO Jakarta Airport</field>
+        <field name="iata_code">CGK</field>
+        <field name="city">DEMO Jakarta</field>
+        <field name="country_id" ref="base.id"/>
+    </record>
+    <record id="demo_airport_jed" model="travel.airport">
+        <field name="name">DEMO Jeddah Airport</field>
+        <field name="iata_code">JED</field>
+        <field name="city">DEMO Jeddah</field>
+        <field name="country_id" ref="base.sa"/>
+    </record>
+    <record id="demo_airport_med" model="travel.airport">
+        <field name="name">DEMO Madinah Airport</field>
+        <field name="iata_code">MED</field>
+        <field name="city">DEMO Madinah</field>
+        <field name="country_id" ref="base.sa"/>
+    </record>
+    <record id="demo_airport_dxb" model="travel.airport">
+        <field name="name">DEMO Dubai Airport</field>
+        <field name="iata_code">DXB</field>
+        <field name="city">DEMO Dubai</field>
+        <field name="country_id" ref="base.ae"/>
+    </record>
+
+    <record id="demo_hotel_makkah" model="travel.hotel">
+        <field name="name">DEMO Makkah Hotel</field>
+        <field name="city">DEMO Makkah</field>
+        <field name="star_rating">4</field>
+        <field name="distance_to_mosque_km">0.8</field>
+    </record>
+    <record id="demo_hotel_madinah" model="travel.hotel">
+        <field name="name">DEMO Madinah Hotel</field>
+        <field name="city">DEMO Madinah</field>
+        <field name="star_rating">4</field>
+        <field name="distance_to_mosque_km">0.6</field>
+    </record>
+
+    <record id="demo_product_umroh_service" model="product.product">
+        <field name="name">DEMO Umroh Service</field>
+        <field name="type">service</field>
+        <field name="invoice_policy">order</field>
+        <field name="taxes_id" eval="[(5, 0, 0)]"/>
+        <field name="supplier_taxes_id" eval="[(5, 0, 0)]"/>
+    </record>
+    <record id="demo_package_reg_09" model="travel.package">
+        <field name="name">DEMO Umroh Reguler 9 Hari</field>
+        <field name="code">DEMO-REG-09</field>
+        <field name="product_id" ref="demo_product_umroh_service"/>
+        <field name="duration_days">9</field>
+        <field name="description">Dataset sintetis untuk demonstrasi Phase 4.</field>
+    </record>
+
+    <record id="demo_departure_reg_01" model="travel.departure">
+        <field name="package_id" ref="demo_package_reg_09"/>
+        <field name="departure_date">2030-02-10</field>
+        <field name="return_date">2030-02-18</field>
+        <field name="quota">20</field>
+    </record>
+    <record id="demo_departure_reg_02" model="travel.departure">
+        <field name="package_id" ref="demo_package_reg_09"/>
+        <field name="departure_date">2030-09-05</field>
+        <field name="return_date">2030-09-13</field>
+        <field name="quota">25</field>
+    </record>
+
+    <record id="demo_price_01_quad" model="travel.departure.price">
+        <field name="departure_id" ref="demo_departure_reg_01"/>
+        <field name="room_type">quad</field>
+        <field name="price">30000000</field>
+    </record>
+    <record id="demo_price_01_triple" model="travel.departure.price">
+        <field name="departure_id" ref="demo_departure_reg_01"/>
+        <field name="room_type">triple</field>
+        <field name="price">33000000</field>
+    </record>
+    <record id="demo_price_01_double" model="travel.departure.price">
+        <field name="departure_id" ref="demo_departure_reg_01"/>
+        <field name="room_type">double</field>
+        <field name="price">36000000</field>
+    </record>
+    <record id="demo_price_02_quad" model="travel.departure.price">
+        <field name="departure_id" ref="demo_departure_reg_02"/>
+        <field name="room_type">quad</field>
+        <field name="price">32000000</field>
+    </record>
+    <record id="demo_price_02_triple" model="travel.departure.price">
+        <field name="departure_id" ref="demo_departure_reg_02"/>
+        <field name="room_type">triple</field>
+        <field name="price">35000000</field>
+    </record>
+    <record id="demo_price_02_double" model="travel.departure.price">
+        <field name="departure_id" ref="demo_departure_reg_02"/>
+        <field name="room_type">double</field>
+        <field name="price">38000000</field>
+    </record>
+
+    <record id="demo_flight_01_out" model="travel.departure.flight">
+        <field name="departure_id" ref="demo_departure_reg_01"/>
+        <field name="sequence">10</field>
+        <field name="airline_id" ref="demo_airline_saudia"/>
+        <field name="flight_number">DEMO-SV-101</field>
+        <field name="origin_airport_id" ref="demo_airport_cgk"/>
+        <field name="destination_airport_id" ref="demo_airport_jed"/>
+        <field name="departure_datetime">2030-02-10 01:00:00</field>
+        <field name="arrival_datetime">2030-02-10 10:00:00</field>
+    </record>
+    <record id="demo_flight_01_return" model="travel.departure.flight">
+        <field name="departure_id" ref="demo_departure_reg_01"/>
+        <field name="sequence">20</field>
+        <field name="airline_id" ref="demo_airline_garuda"/>
+        <field name="flight_number">DEMO-GA-102</field>
+        <field name="origin_airport_id" ref="demo_airport_med"/>
+        <field name="destination_airport_id" ref="demo_airport_cgk"/>
+        <field name="departure_datetime">2030-02-18 02:00:00</field>
+        <field name="arrival_datetime">2030-02-18 14:00:00</field>
+    </record>
+    <record id="demo_flight_02_out" model="travel.departure.flight">
+        <field name="departure_id" ref="demo_departure_reg_02"/>
+        <field name="sequence">10</field>
+        <field name="airline_id" ref="demo_airline_emirates"/>
+        <field name="flight_number">DEMO-EK-201</field>
+        <field name="origin_airport_id" ref="demo_airport_cgk"/>
+        <field name="destination_airport_id" ref="demo_airport_jed"/>
+        <field name="departure_datetime">2030-09-05 01:00:00</field>
+        <field name="arrival_datetime">2030-09-05 10:00:00</field>
+    </record>
+    <record id="demo_flight_02_return" model="travel.departure.flight">
+        <field name="departure_id" ref="demo_departure_reg_02"/>
+        <field name="sequence">20</field>
+        <field name="airline_id" ref="demo_airline_saudia"/>
+        <field name="flight_number">DEMO-SV-202</field>
+        <field name="origin_airport_id" ref="demo_airport_med"/>
+        <field name="destination_airport_id" ref="demo_airport_cgk"/>
+        <field name="departure_datetime">2030-09-13 02:00:00</field>
+        <field name="arrival_datetime">2030-09-13 14:00:00</field>
+    </record>
+
+    <record id="demo_stay_01_makkah" model="travel.departure.accommodation">
+        <field name="departure_id" ref="demo_departure_reg_01"/>
+        <field name="sequence">10</field>
+        <field name="hotel_id" ref="demo_hotel_makkah"/>
+        <field name="check_in">2030-02-10</field>
+        <field name="check_out">2030-02-14</field>
+    </record>
+    <record id="demo_stay_01_madinah" model="travel.departure.accommodation">
+        <field name="departure_id" ref="demo_departure_reg_01"/>
+        <field name="sequence">20</field>
+        <field name="hotel_id" ref="demo_hotel_madinah"/>
+        <field name="check_in">2030-02-14</field>
+        <field name="check_out">2030-02-18</field>
+    </record>
+    <record id="demo_stay_02_makkah" model="travel.departure.accommodation">
+        <field name="departure_id" ref="demo_departure_reg_02"/>
+        <field name="sequence">10</field>
+        <field name="hotel_id" ref="demo_hotel_makkah"/>
+        <field name="check_in">2030-09-05</field>
+        <field name="check_out">2030-09-09</field>
+    </record>
+    <record id="demo_stay_02_madinah" model="travel.departure.accommodation">
+        <field name="departure_id" ref="demo_departure_reg_02"/>
+        <field name="sequence">20</field>
+        <field name="hotel_id" ref="demo_hotel_madinah"/>
+        <field name="check_in">2030-09-09</field>
+        <field name="check_out">2030-09-13</field>
+    </record>
+
+    <function model="travel.demo" name="_open_demo_departures"/>
+
+    <record id="demo_buyer_draft" model="res.partner">
+        <field name="name">DEMO Buyer Draft</field>
+        <field name="email">demo.buyer.draft@travel.example.test</field>
+    </record>
+    <record id="demo_buyer_dp" model="res.partner">
+        <field name="name">DEMO Buyer DP</field>
+        <field name="email">demo.buyer.dp@travel.example.test</field>
+    </record>
+    <record id="demo_buyer_paid" model="res.partner">
+        <field name="name">DEMO Buyer Paid</field>
+        <field name="email">demo.buyer.paid@travel.example.test</field>
+    </record>
+
+    <record id="demo_jamaah_partner_01" model="res.partner">
+        <field name="name">DEMO Jamaah 01</field>
+        <field name="email">demo.jamaah.01@travel.example.test</field>
+        <field name="phone">+6281200000101</field>
+    </record>
+    <record id="demo_jamaah_partner_02" model="res.partner">
+        <field name="name">DEMO Jamaah 02</field>
+        <field name="email">demo.jamaah.02@travel.example.test</field>
+        <field name="phone">+6281200000102</field>
+    </record>
+    <record id="demo_jamaah_partner_03" model="res.partner">
+        <field name="name">DEMO Jamaah 03</field>
+        <field name="email">demo.jamaah.03@travel.example.test</field>
+        <field name="phone">+6281200000103</field>
+    </record>
+    <record id="demo_jamaah_partner_04" model="res.partner">
+        <field name="name">DEMO Jamaah 04</field>
+        <field name="email">demo.jamaah.04@travel.example.test</field>
+        <field name="phone">+6281200000104</field>
+    </record>
+    <record id="demo_jamaah_partner_05" model="res.partner">
+        <field name="name">DEMO Jamaah 05</field>
+        <field name="email">demo.jamaah.05@travel.example.test</field>
+        <field name="phone">+6281200000105</field>
+    </record>
+
+    <record id="demo_jamaah_01" model="travel.jamaah">
+        <field name="partner_id" ref="demo_jamaah_partner_01"/>
+        <field name="nik">DEMO-NIK-01</field>
+        <field name="birth_place">DEMO Jakarta</field>
+        <field name="birth_date">1990-01-01</field>
+        <field name="gender">male</field>
+        <field name="passport_number">DEMO-PASS-01</field>
+        <field name="passport_expiry">2035-01-01</field>
+        <field name="emergency_contact_name">DEMO Emergency 01</field>
+        <field name="emergency_contact_phone">+6281299000101</field>
+    </record>
+    <record id="demo_jamaah_02" model="travel.jamaah">
+        <field name="partner_id" ref="demo_jamaah_partner_02"/>
+        <field name="nik">DEMO-NIK-02</field>
+        <field name="birth_place">DEMO Bandung</field>
+        <field name="birth_date">1991-02-02</field>
+        <field name="gender">female</field>
+        <field name="passport_number">DEMO-PASS-02</field>
+        <field name="passport_expiry">2035-02-02</field>
+        <field name="emergency_contact_name">DEMO Emergency 02</field>
+        <field name="emergency_contact_phone">+6281299000102</field>
+    </record>
+    <record id="demo_jamaah_03" model="travel.jamaah">
+        <field name="partner_id" ref="demo_jamaah_partner_03"/>
+        <field name="nik">DEMO-NIK-03</field>
+        <field name="birth_place">DEMO Surabaya</field>
+        <field name="birth_date">1992-03-03</field>
+        <field name="gender">male</field>
+        <field name="passport_number">DEMO-PASS-03</field>
+        <field name="passport_expiry">2035-03-03</field>
+        <field name="emergency_contact_name">DEMO Emergency 03</field>
+        <field name="emergency_contact_phone">+6281299000103</field>
+    </record>
+    <record id="demo_jamaah_04" model="travel.jamaah">
+        <field name="partner_id" ref="demo_jamaah_partner_04"/>
+        <field name="nik">DEMO-NIK-04</field>
+        <field name="birth_place">DEMO Medan</field>
+        <field name="birth_date">1993-04-04</field>
+        <field name="gender">female</field>
+        <field name="passport_number">DEMO-PASS-04</field>
+        <field name="passport_expiry">2035-04-04</field>
+        <field name="emergency_contact_name">DEMO Emergency 04</field>
+        <field name="emergency_contact_phone">+6281299000104</field>
+    </record>
+    <record id="demo_jamaah_05" model="travel.jamaah">
+        <field name="partner_id" ref="demo_jamaah_partner_05"/>
+        <field name="nik">DEMO-NIK-05</field>
+        <field name="birth_place">DEMO Makassar</field>
+        <field name="birth_date">1994-05-05</field>
+        <field name="gender">male</field>
+        <field name="passport_number">DEMO-PASS-05</field>
+        <field name="passport_expiry">2035-05-05</field>
+        <field name="emergency_contact_name">DEMO Emergency 05</field>
+        <field name="emergency_contact_phone">+6281299000105</field>
+    </record>
+
+    <record id="demo_booking_draft" model="sale.order">
+        <field name="partner_id" ref="demo_buyer_draft"/>
+        <field name="user_id" ref="base.user_admin"/>
+        <field name="client_order_ref">DEMO-DRAFT</field>
+        <field name="is_travel_booking">True</field>
+        <field name="departure_id" ref="demo_departure_reg_01"/>
+    </record>
+    <record id="demo_booking_dp" model="sale.order">
+        <field name="partner_id" ref="demo_buyer_dp"/>
+        <field name="user_id" ref="base.user_admin"/>
+        <field name="client_order_ref">DEMO-DP</field>
+        <field name="is_travel_booking">True</field>
+        <field name="departure_id" ref="demo_departure_reg_01"/>
+    </record>
+    <record id="demo_booking_paid" model="sale.order">
+        <field name="partner_id" ref="demo_buyer_paid"/>
+        <field name="user_id" ref="base.user_admin"/>
+        <field name="client_order_ref">DEMO-PAID</field>
+        <field name="is_travel_booking">True</field>
+        <field name="departure_id" ref="demo_departure_reg_02"/>
+    </record>
+
+    <record id="demo_participant_draft_01" model="travel.booking.participant">
+        <field name="order_id" ref="demo_booking_draft"/>
+        <field name="jamaah_id" ref="demo_jamaah_01"/>
+        <field name="room_type">quad</field>
+    </record>
+    <record id="demo_participant_dp_02" model="travel.booking.participant">
+        <field name="order_id" ref="demo_booking_dp"/>
+        <field name="jamaah_id" ref="demo_jamaah_02"/>
+        <field name="room_type">triple</field>
+    </record>
+    <record id="demo_participant_paid_03" model="travel.booking.participant">
+        <field name="order_id" ref="demo_booking_paid"/>
+        <field name="jamaah_id" ref="demo_jamaah_03"/>
+        <field name="room_type">quad</field>
+    </record>
+    <record id="demo_participant_paid_04" model="travel.booking.participant">
+        <field name="order_id" ref="demo_booking_paid"/>
+        <field name="jamaah_id" ref="demo_jamaah_04"/>
+        <field name="room_type">triple</field>
+    </record>
+
+    <function model="travel.demo" name="_load_demo_accounting_states"/>
+</odoo>

@@ -14,5 +14,6 @@ from . import test_phase3_cancellation
 from . import test_phase3_departure
 from . import test_phase3_views
 from . import test_phase4_reporting
+from . import test_phase4_demo
 from . import test_security
 from . import test_views
