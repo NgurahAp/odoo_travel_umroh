@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_travel_capacity_pivot" model="ir.ui.view">
+        <field name="name">travel.capacity.report.pivot</field>
+        <field name="model">travel.departure</field>
+        <field name="arch" type="xml">
+            <pivot string="Analisis Kapasitas Keberangkatan">
+                <field name="package_id" type="row"/>
+                <field name="state" type="row"/>
+                <field name="departure_date" interval="month" type="col"/>
+                <field name="quota" type="measure"/>
+                <field name="reserved_seats" type="measure"/>
+                <field name="remaining_seats" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_travel_capacity_graph" model="ir.ui.view">
+        <field name="name">travel.capacity.report.graph</field>
+        <field name="model">travel.departure</field>
+        <field name="arch" type="xml">
+            <graph string="Kapasitas per Keberangkatan" type="bar" stacked="1">
+                <field name="name"/>
+                <field name="reserved_seats" type="measure"/>
+                <field name="remaining_seats" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="action_travel_capacity_report" model="ir.actions.act_window">
+        <field name="name">Kapasitas Keberangkatan</field>
+        <field name="res_model">travel.departure</field>
+        <field name="view_mode">list,pivot,graph,form</field>
+        <field name="search_view_id" ref="view_travel_departure_search"/>
+    </record>
+
+    <record id="action_travel_capacity_report_list" model="ir.actions.act_window.view">
+        <field name="sequence" eval="1"/>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="view_travel_departure_list"/>
+        <field name="act_window_id" ref="action_travel_capacity_report"/>
+    </record>
+    <record id="action_travel_capacity_report_pivot" model="ir.actions.act_window.view">
+        <field name="sequence" eval="2"/>
+        <field name="view_mode">pivot</field>
+        <field name="view_id" ref="view_travel_capacity_pivot"/>
+        <field name="act_window_id" ref="action_travel_capacity_report"/>
+    </record>
+    <record id="action_travel_capacity_report_graph" model="ir.actions.act_window.view">
+        <field name="sequence" eval="3"/>
+        <field name="view_mode">graph</field>
+        <field name="view_id" ref="view_travel_capacity_graph"/>
+        <field name="act_window_id" ref="action_travel_capacity_report"/>
+    </record>
+    <record id="action_travel_capacity_report_form" model="ir.actions.act_window.view">
+        <field name="sequence" eval="4"/>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_travel_departure_form"/>
+        <field name="act_window_id" ref="action_travel_capacity_report"/>
+    </record>
+
+    <record id="view_travel_document_pivot" model="ir.ui.view">
+        <field name="name">travel.document.report.pivot</field>
+        <field name="model">travel.jamaah</field>
+        <field name="arch" type="xml">
+            <pivot string="Jamaah berdasarkan Status Dokumen">
+                <field name="document_status" type="row"/>
+                <field name="gender" type="col"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_travel_document_graph" model="ir.ui.view">
+        <field name="name">travel.document.report.graph</field>
+        <field name="model">travel.jamaah</field>
+        <field name="arch" type="xml">
+            <graph string="Status Dokumen Jamaah" type="pie">
+                <field name="document_status"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="action_travel_document_report" model="ir.actions.act_window">
+        <field name="name">Status Dokumen</field>
+        <field name="res_model">travel.jamaah</field>
+        <field name="view_mode">list,pivot,graph,form</field>
+        <field name="search_view_id" ref="view_travel_jamaah_search"/>
+    </record>
+
+    <record id="action_travel_document_report_list" model="ir.actions.act_window.view">
+        <field name="sequence" eval="1"/>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="view_travel_jamaah_list"/>
+        <field name="act_window_id" ref="action_travel_document_report"/>
+    </record>
+    <record id="action_travel_document_report_pivot" model="ir.actions.act_window.view">
+        <field name="sequence" eval="2"/>
+        <field name="view_mode">pivot</field>
+        <field name="view_id" ref="view_travel_document_pivot"/>
+        <field name="act_window_id" ref="action_travel_document_report"/>
+    </record>
+    <record id="action_travel_document_report_graph" model="ir.actions.act_window.view">
+        <field name="sequence" eval="3"/>
+        <field name="view_mode">graph</field>
+        <field name="view_id" ref="view_travel_document_graph"/>
+        <field name="act_window_id" ref="action_travel_document_report"/>
+    </record>
+    <record id="action_travel_document_report_form" model="ir.actions.act_window.view">
+        <field name="sequence" eval="4"/>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_travel_jamaah_form"/>
+        <field name="act_window_id" ref="action_travel_document_report"/>
+    </record>
+</odoo>

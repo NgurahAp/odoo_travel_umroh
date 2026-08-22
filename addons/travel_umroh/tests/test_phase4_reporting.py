@@ -169,3 +169,72 @@ class TestPhaseFourReporting(TravelAccountingCase):
             receivable_menu.action,
             self.env.ref("account.action_move_out_invoice_type"),
         )
+
+    def test_capacity_report_uses_stored_departure_measures(self):
+        action = self.env.ref("travel_umroh.action_travel_capacity_report")
+        self.assertEqual(action.res_model, "travel.departure")
+        self.assertEqual(action.view_mode, "list,pivot,graph,form")
+
+        pivot = self._view_root("travel_umroh.view_travel_capacity_pivot")
+        for name in ("quota", "reserved_seats", "remaining_seats"):
+            self.assertTrue(
+                pivot.xpath(f"//field[@name='{name}' and @type='measure']"),
+                name,
+            )
+
+        order = self._confirmed_booking(
+            "PHASE4-CAPACITY",
+            participant_count=2,
+        )
+        self._post_and_pay(self._create_downpayment_invoice(order))
+        self.departure.invalidate_recordset(
+            ["reserved_seats", "remaining_seats"]
+        )
+
+        groups = self.env["travel.departure"].with_user(
+            self.staff
+        ).read_group(
+            [("id", "=", self.departure.id)],
+            ["quota:sum", "reserved_seats:sum", "remaining_seats:sum"],
+            ["package_id"],
+            lazy=False,
+        )
+        self.assertEqual(len(groups), 1)
+        self.assertEqual(groups[0]["reserved_seats"], 2)
+        self.assertEqual(
+            groups[0]["remaining_seats"],
+            self.departure.quota - 2,
+        )
+
+    def test_document_report_groups_jamaah_by_real_status(self):
+        action = self.env.ref("travel_umroh.action_travel_document_report")
+        self.assertEqual(action.res_model, "travel.jamaah")
+        self.assertEqual(action.view_mode, "list,pivot,graph,form")
+
+        jamaah = self._create_jamaah("PHASE4-DOCUMENT")
+        grouped = self.env["travel.jamaah"].with_user(self.staff).read_group(
+            [("id", "=", jamaah.id)],
+            ["id:count"],
+            ["document_status"],
+            lazy=False,
+        )
+        self.assertEqual(len(grouped), 1)
+        self.assertEqual(grouped[0]["document_status"], "incomplete")
+        self.assertEqual(grouped[0]["__count"], 1)
+
+        pivot = self._view_root("travel_umroh.view_travel_document_pivot")
+        self.assertTrue(pivot.xpath("//field[@name='document_status']"))
+        graph = self._view_root("travel_umroh.view_travel_document_graph")
+        self.assertEqual(graph.get("type"), "pie")
+
+    def test_operational_report_menus_are_visible_to_all_travel_roles(self):
+        group_ids = {
+            self.env.ref("travel_umroh.group_travel_staff").id,
+            self.env.ref("travel_umroh.group_travel_finance").id,
+            self.env.ref("travel_umroh.group_travel_manager").id,
+        }
+        for xmlid in (
+            "travel_umroh.menu_travel_capacity_report",
+            "travel_umroh.menu_travel_document_report",
+        ):
+            self.assertEqual(set(self.env.ref(xmlid).groups_id.ids), group_ids)
