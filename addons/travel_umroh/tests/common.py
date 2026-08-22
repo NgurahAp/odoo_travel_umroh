@@ -140,3 +140,51 @@ class TravelAccountingCase(AccountTestInvoicingCommon, TravelBookingCase):
             )
         order.with_user(self.staff).action_confirm()
         return order
+
+    def _create_invoice_wizard(self, order, method, **values):
+        return (
+            self.env["sale.advance.payment.inv"]
+            .with_user(self.finance)
+            .with_context(
+                active_model="sale.order",
+                active_id=order.id,
+                active_ids=order.ids,
+                default_journal_id=self.company_data[
+                    "default_journal_sale"
+                ].id,
+            )
+            .create({"advance_payment_method": method, **values})
+        )
+
+    def _create_downpayment_invoice(
+        self, order, method="percentage", amount=20
+    ):
+        values = (
+            {"amount": amount}
+            if method == "percentage"
+            else {"fixed_amount": amount}
+        )
+        self._create_invoice_wizard(order, method, **values).create_invoices()
+        order.invalidate_recordset(["invoice_ids"])
+        return order.invoice_ids.sorted("id")[-1]
+
+    def _post_and_pay(self, invoice):
+        invoice.with_user(self.finance).action_post()
+        (
+            self.env["account.payment.register"]
+            .with_user(self.finance)
+            .with_context(
+                active_model="account.move",
+                active_ids=invoice.ids,
+            )
+            .create(
+                {
+                    "journal_id": self.company_data[
+                        "default_journal_bank"
+                    ].id,
+                }
+            )
+            .action_create_payments()
+        )
+        invoice.invalidate_recordset(["amount_residual", "payment_state"])
+        return invoice

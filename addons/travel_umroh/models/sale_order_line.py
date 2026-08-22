@@ -3,6 +3,7 @@ from odoo.exceptions import AccessError, UserError
 
 from .sale_advance_payment_inv import (
     is_travel_downpayment_line_creation_allowed,
+    is_travel_downpayment_line_posting_allowed,
 )
 
 
@@ -75,7 +76,17 @@ class SaleOrderLine(models.Model):
 
     def write(self, values):
         self.check_access("write")
-        if self._is_travel_finance_only():
+        trusted_posting_update = (
+            is_travel_downpayment_line_posting_allowed()
+            and bool(values)
+            and set(values) <= {"name", "price_unit", "tax_id"}
+            and self
+            and all(
+                line.is_downpayment and line.order_id.is_travel_booking
+                for line in self
+            )
+        )
+        if self._is_travel_finance_only() and not trusted_posting_update:
             raise AccessError(
                 _("Finance Travel Umroh tidak dapat mengubah baris Sales.")
             )

@@ -8,6 +8,9 @@ from odoo.exceptions import AccessError, UserError
 _travel_downpayment_line_creation = ContextVar(
     "travel_umroh_downpayment_line_creation", default=False
 )
+_travel_downpayment_line_posting = ContextVar(
+    "travel_umroh_downpayment_line_posting", default=False
+)
 
 
 @contextmanager
@@ -21,6 +24,19 @@ def _allow_travel_downpayment_line_creation():
 
 def is_travel_downpayment_line_creation_allowed():
     return _travel_downpayment_line_creation.get()
+
+
+@contextmanager
+def allow_travel_downpayment_line_posting():
+    token = _travel_downpayment_line_posting.set(True)
+    try:
+        yield
+    finally:
+        _travel_downpayment_line_posting.reset(token)
+
+
+def is_travel_downpayment_line_posting_allowed():
+    return _travel_downpayment_line_posting.get()
 
 
 class SaleAdvancePaymentInv(models.TransientModel):

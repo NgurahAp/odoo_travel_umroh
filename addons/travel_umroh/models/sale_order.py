@@ -52,6 +52,17 @@ class SaleOrder(models.Model):
     participant_count = fields.Integer(
         string="Jumlah Participant", compute="_compute_participant_count"
     )
+    travel_payment_state = fields.Selection(
+        [
+            ("unpaid", "Belum Bayar"),
+            ("dp", "DP / Bayar Sebagian"),
+            ("paid", "Lunas"),
+            ("refunded", "Refunded"),
+        ],
+        string="Status Pembayaran Travel",
+        compute="_compute_travel_payment_state",
+        readonly=True,
+    )
     can_edit_travel_participants = fields.Boolean(
         compute="_compute_travel_edit_helpers"
     )
@@ -63,6 +74,63 @@ class SaleOrder(models.Model):
     def _compute_participant_count(self):
         for order in self:
             order.participant_count = len(order.participant_ids)
+
+    @api.depends(
+        "is_travel_booking",
+        "invoice_status",
+        "amount_total",
+        "currency_id",
+        "invoice_ids.state",
+        "invoice_ids.move_type",
+        "invoice_ids.amount_total",
+        "invoice_ids.amount_residual",
+        "invoice_ids.payment_state",
+    )
+    def _compute_travel_payment_state(self):
+        for order in self:
+            if not order.is_travel_booking:
+                order.travel_payment_state = False
+                continue
+
+            posted_moves = order.invoice_ids.filtered(
+                lambda move: move.state == "posted"
+                and move.move_type in ("out_invoice", "out_refund")
+            )
+            invoices = posted_moves.filtered(
+                lambda move: move.move_type == "out_invoice"
+            )
+            refunds = posted_moves.filtered(
+                lambda move: move.move_type == "out_refund"
+            )
+            invoice_total = sum(invoices.mapped("amount_total"))
+            refund_total = sum(refunds.mapped("amount_total"))
+            net_total = invoice_total - refund_total
+            all_settled = bool(posted_moves) and all(
+                order.currency_id.is_zero(move.amount_residual)
+                for move in posted_moves
+            )
+
+            if (
+                invoices
+                and refunds
+                and order.currency_id.is_zero(net_total)
+                and all_settled
+            ):
+                order.travel_payment_state = "refunded"
+            elif (
+                invoices
+                and order.invoice_status == "invoiced"
+                and order.currency_id.compare_amounts(
+                    net_total, order.amount_total
+                )
+                == 0
+                and all_settled
+            ):
+                order.travel_payment_state = "paid"
+            elif invoices:
+                order.travel_payment_state = "dp"
+            else:
+                order.travel_payment_state = "unpaid"
 
     @api.depends("state", "locked")
     @api.depends_context("uid")
@@ -97,6 +165,14 @@ class SaleOrder(models.Model):
         return super().create(vals_list)
 
     def write(self, values):
+        protected_phase_three_fields = {"travel_payment_state"}
+        if protected_phase_three_fields.intersection(values):
+            raise UserError(
+                _(
+                    "Status pembayaran Travel dihitung otomatis dari "
+                    "invoice dan pembayaran Accounting."
+                )
+            )
         if self._is_travel_finance_only():
             raise AccessError(
                 _("Finance Travel Umroh hanya dapat membaca booking.")
