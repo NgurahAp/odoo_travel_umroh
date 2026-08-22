@@ -1,21 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <menuitem id="menu_travel_root" name="Travel Umroh" sequence="60" groups="travel_umroh.group_travel_staff,travel_umroh.group_travel_finance,travel_umroh.group_travel_manager"/>
+    <menuitem id="menu_travel_root" name="Travel Umroh" sequence="60" groups="travel_umroh.group_travel_staff,travel_umroh.group_travel_finance,travel_umroh.group_travel_manager,base.group_system"/>
 
     <menuitem id="menu_travel_booking" name="Booking" parent="menu_travel_root" action="action_travel_booking" sequence="10"/>
     <menuitem id="menu_travel_jamaah" name="Jamaah" parent="menu_travel_root" action="action_travel_jamaah" sequence="20"/>
     <menuitem id="menu_travel_package" name="Paket" parent="menu_travel_root" action="action_travel_package" sequence="30"/>
     <menuitem id="menu_travel_departure" name="Keberangkatan" parent="menu_travel_root" action="action_travel_departure" sequence="40"/>
 
-    <menuitem id="menu_travel_reporting" name="Laporan" parent="menu_travel_root" sequence="80" groups="travel_umroh.group_travel_staff,travel_umroh.group_travel_finance,travel_umroh.group_travel_manager"/>
-    <menuitem id="menu_travel_booking_report" name="Booking &amp; Penjualan" parent="menu_travel_reporting" action="action_travel_booking_report" sequence="10" groups="travel_umroh.group_travel_staff,travel_umroh.group_travel_finance,travel_umroh.group_travel_manager"/>
-    <menuitem id="menu_travel_capacity_report" name="Kapasitas Keberangkatan" parent="menu_travel_reporting" action="action_travel_capacity_report" sequence="20" groups="travel_umroh.group_travel_staff,travel_umroh.group_travel_finance,travel_umroh.group_travel_manager"/>
-    <menuitem id="menu_travel_document_report" name="Status Dokumen" parent="menu_travel_reporting" action="action_travel_document_report" sequence="30" groups="travel_umroh.group_travel_staff,travel_umroh.group_travel_finance,travel_umroh.group_travel_manager"/>
-    <menuitem id="menu_travel_manifest" name="Manifest Jamaah" parent="menu_travel_reporting" action="action_travel_manifest" sequence="40" groups="travel_umroh.group_travel_staff,travel_umroh.group_travel_finance,travel_umroh.group_travel_manager"/>
-    <menuitem id="menu_travel_receivable_report" name="Sisa Tagihan" parent="menu_travel_reporting" action="account.action_move_out_invoice_type" sequence="50" groups="travel_umroh.group_travel_finance,travel_umroh.group_travel_manager"/>
+    <menuitem id="menu_travel_reporting" name="Laporan" parent="menu_travel_root" sequence="80" groups="travel_umroh.group_travel_staff,travel_umroh.group_travel_finance,travel_umroh.group_travel_manager,base.group_system"/>
+    <menuitem id="menu_travel_booking_report" name="Booking &amp; Penjualan" parent="menu_travel_reporting" action="action_travel_booking_report" sequence="10" groups="travel_umroh.group_travel_staff,travel_umroh.group_travel_finance,travel_umroh.group_travel_manager,base.group_system"/>
+    <menuitem id="menu_travel_capacity_report" name="Kapasitas Keberangkatan" parent="menu_travel_reporting" action="action_travel_capacity_report" sequence="20" groups="travel_umroh.group_travel_staff,travel_umroh.group_travel_finance,travel_umroh.group_travel_manager,base.group_system"/>
+    <menuitem id="menu_travel_document_report" name="Status Dokumen" parent="menu_travel_reporting" action="action_travel_document_report" sequence="30" groups="travel_umroh.group_travel_staff,travel_umroh.group_travel_finance,travel_umroh.group_travel_manager,base.group_system"/>
+    <menuitem id="menu_travel_manifest" name="Manifest Jamaah" parent="menu_travel_reporting" action="action_travel_manifest" sequence="40" groups="travel_umroh.group_travel_staff,travel_umroh.group_travel_finance,travel_umroh.group_travel_manager,base.group_system"/>
+    <menuitem id="menu_travel_receivable_report" name="Sisa Tagihan" parent="menu_travel_reporting" action="account.action_move_out_invoice_type" sequence="50" groups="travel_umroh.group_travel_finance,travel_umroh.group_travel_manager,base.group_system"/>
 
-    <menuitem id="menu_travel_configuration" name="Konfigurasi" parent="menu_travel_root" sequence="90" groups="travel_umroh.group_travel_manager"/>
-    <menuitem id="menu_travel_airline" name="Maskapai" parent="menu_travel_configuration" action="action_travel_airline" sequence="10" groups="travel_umroh.group_travel_manager"/>
-    <menuitem id="menu_travel_airport" name="Bandara" parent="menu_travel_configuration" action="action_travel_airport" sequence="20" groups="travel_umroh.group_travel_manager"/>
-    <menuitem id="menu_travel_hotel" name="Hotel" parent="menu_travel_configuration" action="action_travel_hotel" sequence="30" groups="travel_umroh.group_travel_manager"/>
+    <menuitem id="menu_travel_configuration" name="Konfigurasi" parent="menu_travel_root" sequence="90" groups="travel_umroh.group_travel_manager,base.group_system"/>
+    <menuitem id="menu_travel_airline" name="Maskapai" parent="menu_travel_configuration" action="action_travel_airline" sequence="10" groups="travel_umroh.group_travel_manager,base.group_system"/>
+    <menuitem id="menu_travel_airport" name="Bandara" parent="menu_travel_configuration" action="action_travel_airport" sequence="20" groups="travel_umroh.group_travel_manager,base.group_system"/>
+    <menuitem id="menu_travel_hotel" name="Hotel" parent="menu_travel_configuration" action="action_travel_hotel" sequence="30" groups="travel_umroh.group_travel_manager,base.group_system"/>
 </odoo>

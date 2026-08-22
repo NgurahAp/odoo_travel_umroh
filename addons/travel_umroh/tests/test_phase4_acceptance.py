@@ -257,6 +257,7 @@ class TestPhaseFourInternalAcceptance(TravelAccountingCase):
             {
                 self.env.ref("travel_umroh.group_travel_finance").id,
                 self.env.ref("travel_umroh.group_travel_manager").id,
+                self.env.ref("base.group_system").id,
             },
         )
         self.assertFalse(

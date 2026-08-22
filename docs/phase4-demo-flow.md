@@ -64,6 +64,7 @@ Jangan mengubah `DEMO-PAID`; buat Booking baru atau duplikat sintetis agar data 
 | Staff/Finance/Manager | Reporting → Manifest Jamaah | Filter keberangkatan bekerja dan manifest read-only | Screenshot Manifest Jamaah terfilter |
 | Finance/Manager | Reporting → Sisa Tagihan | Menu terlihat dan membuka customer invoice standar | Screenshot menu dan action |
 | Staff | Cari menu Sisa Tagihan | Menu tidak terlihat | Screenshot menu Reporting Staff |
+| System Administrator | Buka kelima menu Reporting, lalu Travel Umroh → Konfigurasi | Semua laporan termasuk Sisa Tagihan terlihat; master data dapat dikelola tanpa harus diberi role bisnis Travel | Screenshot menu Reporting, Konfigurasi, dan satu form master |
 
 ## 8. Regresi Sales biasa
 

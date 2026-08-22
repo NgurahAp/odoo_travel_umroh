@@ -148,6 +148,7 @@ class TestPhaseFourReporting(TravelAccountingCase):
         staff = self.env.ref("travel_umroh.group_travel_staff")
         finance = self.env.ref("travel_umroh.group_travel_finance")
         manager = self.env.ref("travel_umroh.group_travel_manager")
+        system = self.env.ref("base.group_system")
 
         reporting_menu = self.env.ref("travel_umroh.menu_travel_reporting")
         booking_menu = self.env.ref(
@@ -156,7 +157,7 @@ class TestPhaseFourReporting(TravelAccountingCase):
         for menu in (reporting_menu, booking_menu):
             self.assertEqual(
                 set(menu.groups_id.ids),
-                {staff.id, finance.id, manager.id},
+                {staff.id, finance.id, manager.id, system.id},
             )
 
         receivable_menu = self.env.ref(
@@ -164,7 +165,7 @@ class TestPhaseFourReporting(TravelAccountingCase):
         )
         self.assertEqual(
             set(receivable_menu.groups_id.ids),
-            {finance.id, manager.id},
+            {finance.id, manager.id, system.id},
         )
         self.assertEqual(
             receivable_menu.action,
@@ -233,6 +234,7 @@ class TestPhaseFourReporting(TravelAccountingCase):
             self.env.ref("travel_umroh.group_travel_staff").id,
             self.env.ref("travel_umroh.group_travel_finance").id,
             self.env.ref("travel_umroh.group_travel_manager").id,
+            self.env.ref("base.group_system").id,
         }
         for xmlid in (
             "travel_umroh.menu_travel_capacity_report",
@@ -368,5 +370,6 @@ class TestPhaseFourReporting(TravelAccountingCase):
                 self.env.ref("travel_umroh.group_travel_staff").id,
                 self.env.ref("travel_umroh.group_travel_finance").id,
                 self.env.ref("travel_umroh.group_travel_manager").id,
+                self.env.ref("base.group_system").id,
             },
         )

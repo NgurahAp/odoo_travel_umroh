@@ -1,5 +1,6 @@
 import base64
 
+from odoo import Command
 from odoo.exceptions import AccessError, UserError
 from odoo.tests import tagged
 
@@ -12,6 +13,12 @@ class TestPhaseFourInternalHardening(TravelAccountingCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.administrator = cls.env.ref("base.user_admin")
+        cls.administrator.sudo().write(
+            {
+                "company_id": cls.env.company.id,
+                "company_ids": [Command.link(cls.env.company.id)],
+            }
+        )
 
     def _pending_jamaah(self, suffix):
         jamaah = self._create_jamaah(
@@ -124,3 +131,57 @@ class TestPhaseFourInternalHardening(TravelAccountingCase):
             self.departure.with_user(self.administrator).write(
                 {"state": "done"}
             )
+
+    def test_administrator_can_read_all_reports_and_report_menus(self):
+        order = self._confirmed_booking("PH4-ADMIN-REPORT")
+        participant = order.participant_ids.ensure_one()
+        reports = (
+            ("travel_umroh.action_travel_booking_report", order),
+            ("travel_umroh.action_travel_capacity_report", self.departure),
+            (
+                "travel_umroh.action_travel_document_report",
+                participant.jamaah_id,
+            ),
+            ("travel_umroh.action_travel_manifest", participant),
+        )
+        for xmlid, expected_record in reports:
+            with self.subTest(action=xmlid):
+                action = self.env.ref(xmlid)
+                visible = self.env[action.res_model].with_user(
+                    self.administrator
+                ).search([("id", "=", expected_record.id)])
+                self.assertEqual(visible.ids, expected_record.ids)
+
+        visible_menu_ids = (
+            self.env["ir.ui.menu"]
+            .with_user(self.administrator)
+            ._visible_menu_ids()
+        )
+        for xmlid in (
+            "travel_umroh.menu_travel_booking_report",
+            "travel_umroh.menu_travel_capacity_report",
+            "travel_umroh.menu_travel_document_report",
+            "travel_umroh.menu_travel_manifest",
+            "travel_umroh.menu_travel_receivable_report",
+            "travel_umroh.menu_travel_configuration",
+        ):
+            with self.subTest(menu=xmlid):
+                self.assertIn(self.env.ref(xmlid).id, visible_menu_ids)
+
+        for model_name in (
+            "travel.airline",
+            "travel.airport",
+            "travel.hotel",
+            "travel.package",
+            "travel.departure",
+            "travel.departure.price",
+            "travel.departure.flight",
+            "travel.departure.accommodation",
+            "travel.jamaah",
+            "travel.booking.participant",
+            "travel.booking.cancel.wizard",
+        ):
+            model = self.env[model_name].with_user(self.administrator)
+            for operation in ("read", "write", "create", "unlink"):
+                with self.subTest(model=model_name, operation=operation):
+                    model.check_access(operation)
