@@ -1238,3 +1238,15 @@ Do not implement or plan Phase 5 in the Phase 4 execution session. Stop for user
 - Custom OWL/JavaScript dashboard, KPI tiles, or bespoke chart widgets.
 - WhatsApp, payment gateway, bank synchronization, waitlist, room/roommate allocation, visa processing/API, airline manifest API, mobile application, legacy migration, multi-company consolidation, and multi-currency reporting.
 - Production SMTP, Indonesian localization/chart configuration, and real customer/demo identities.
+
+## Actual Phase 4 Checkpoint Evidence (2026-08-22)
+
+- Static review: `git diff --check` and Python `compileall` passed; no `<tree>`, controller, `http.route`, JavaScript/OWL, payment-gateway, or WhatsApp implementation was added. Report actions rely on normal ACL/record rules and do not use `sudo()` to manufacture visibility. Demo XML is registered only under the manifest `demo` key.
+- Standard suite on `travel_umroh_phase4_test`: 186 post-install methods / 226 Odoo stats, 0 failed, 0 errors. This exceeds the Phase 3 baseline of 169/201.
+- Separate PostgreSQL concurrency proof: one method / three Odoo stats, 0 failed, 0 errors. The expected serialization conflict occurred and exactly one last-seat reservation succeeded.
+- Never-used no-demo database `travel_umroh_phase4_acceptance_03`: clean install and subsequent module upgrade each passed the full 186/226 suite with 0/0. SQL readback remained `installed|18.0.4.0.0` with zero `DEMO-%` packages before and after upgrade.
+- Never-used demo database `travel_umroh_phase4_demo_03`: clean install and subsequent module upgrade each passed the full 186/226 suite with 0/0. Before and after upgrade the snapshot remained three bookings (`DEMO-DRAFT|unpaid|draft|false`, `DEMO-DP|dp|sale|false`, `DEMO-PAID|paid|sale|true`), three invoices, two reconciled payments, two departures, six departure prices, five demo Jamaah XML IDs, and two reserved paid seats.
+- Focused reporting/security review on the clean-install database: 39 post-install methods / 49 Odoo stats, 0 failed, 0 errors. Staff, Finance, Manager, and System Administrator menu/ACL/server-guard boundaries match the matrix above. A discovered Administrator reporting/master-data gap was returned to the owning hardening task, covered by a RED regression, fixed in commit `ad44be4`, and the complete verification sequence was restarted.
+- Manual evidence is ready to capture with `docs/phase4-demo-flow.md`. Automated action/view/domain tests and SQL state readback are green; authenticated screenshots remain the user-facing review checkpoint because entering an account password requires an explicit credential action.
+- No database, PostgreSQL data, Docker volume, or development data was deleted. The new `_03` databases were retained for review.
+- Portal/Phase 5, printable custom Manifest, custom dashboard/OWL, and all explicitly deferred integrations were not started.
