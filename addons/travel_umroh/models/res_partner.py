@@ -20,6 +20,9 @@ class ResPartner(models.Model):
                 )
 
         changed_fields = set(values)
+        trusted_signup_metadata_write = (
+            self.env.is_admin() and changed_fields == {"signup_type"}
+        )
         verified_jamaah = self.env["travel.jamaah"]
         if changed_fields:
             verified_jamaah = self.env["travel.jamaah"].sudo().search(
@@ -28,8 +31,12 @@ class ResPartner(models.Model):
                     ("document_status", "=", "verified"),
                 ]
             )
-            if verified_jamaah and not self.env.user.has_group(
-                "travel_umroh.group_travel_manager"
+            if (
+                verified_jamaah
+                and not trusted_signup_metadata_write
+                and not self.env.user.has_group(
+                    "travel_umroh.group_travel_manager"
+                )
             ):
                 raise AccessError(
                     _(
@@ -39,7 +46,7 @@ class ResPartner(models.Model):
                 )
 
         result = super().write(values)
-        if verified_jamaah:
+        if verified_jamaah and not trusted_signup_metadata_write:
             field_labels = ", ".join(
                 self._fields[field_name].string
                 for field_name in sorted(changed_fields)

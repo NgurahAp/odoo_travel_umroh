@@ -1,3 +1,5 @@
+import base64
+
 from odoo import Command
 from odoo.exceptions import AccessError, UserError
 from odoo.tests import tagged
@@ -7,6 +9,55 @@ from .common import TravelAccountingCase
 
 @tagged("post_install", "-at_install")
 class TestPhaseThreeAccountingSecurity(TravelAccountingCase):
+    def test_finance_can_invoice_verified_jamaah_without_contact_write(self):
+        jamaah = self._create_jamaah(
+            "SEC-VERIFIED-BUYER",
+            email="verified-buyer@example.test",
+            passport_number="SEC-VERIFIED-PASS",
+            passport_expiry="2032-01-01",
+            ktp_file=base64.b64encode(b"verified-ktp"),
+            ktp_filename="verified-ktp.pdf",
+            passport_file=base64.b64encode(b"verified-passport"),
+            passport_filename="verified-passport.pdf",
+        )
+        jamaah.with_user(self.staff).action_submit_documents()
+        jamaah.with_user(self.manager).action_verify_documents()
+        order = self.env["sale.order"].with_user(self.staff).create(
+            {
+                "partner_id": jamaah.partner_id.id,
+                "user_id": self.staff.id,
+                "is_travel_booking": True,
+                "departure_id": self.departure.id,
+            }
+        )
+        self.env["travel.booking.participant"].with_user(self.staff).create(
+            {
+                "order_id": order.id,
+                "jamaah_id": jamaah.id,
+                "room_type": "quad",
+            }
+        )
+        order.with_user(self.staff).action_confirm()
+
+        with self.assertRaises(AccessError):
+            jamaah.partner_id.with_user(self.finance).write(
+                {"signup_type": "signup"}
+            )
+
+        self.env["ir.config_parameter"].sudo().set_param(
+            "auth_signup.invitation_scope", "b2c"
+        )
+        auth_params = (
+            jamaah.partner_id.with_user(self.finance)
+            .sudo()
+            .signup_get_auth_param()
+        )
+        self.assertIn("auth_signup_token", auth_params[jamaah.partner_id.id])
+        invoice = self._create_downpayment_invoice(order)
+
+        self.assertEqual(invoice.partner_id, jamaah.partner_id)
+        self.assertEqual(invoice.state, "draft")
+
     def test_finance_gets_standard_billing_but_not_sales_user(self):
         self.assertTrue(
             self.finance.has_group("account.group_account_invoice")

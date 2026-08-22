@@ -1323,3 +1323,24 @@ source verification then reported:
   `installed|18.0.3.0.0`;
 - dedicated `database_breaking` concurrency proof: 1 post-test / 3 Odoo test
   stats, 0 failed, 0 errors.
+
+### Verified-Jamaah invoice correction — 2026-08-22
+
+The development database uses public portal signup (`b2c`). During standard
+invoice creation Odoo prepares a portal signup token for an emailed customer
+with `sudo()` and writes only its technical `signup_type` metadata. The Phase 2
+verified-contact guard originally treated that framework write as a business
+contact correction, so Finance could not invoice a verified Jamaah customer.
+
+The guard now permits exactly `{signup_type}` only while Odoo is running as an
+administrator/superuser. Direct Finance writes, all business contact fields,
+and the Manager-only audited correction path remain unchanged. A regression
+uses a verified Jamaah with email and `b2c` signup enabled, proves that Finance
+cannot write `signup_type` directly, proves Odoo's internal signup preparation
+succeeds, and then creates the draft DP invoice.
+
+- exact regression: 1 post-test / 3 Odoo test stats, 0 failed, 0 errors;
+- focused Phase 2 + Phase 3 security suite: 26 post-tests / 30 Odoo test stats,
+  0 failed, 0 errors;
+- full module upgrade suite: 169 post-tests / 201 Odoo test stats, 0 failed,
+  0 errors.
