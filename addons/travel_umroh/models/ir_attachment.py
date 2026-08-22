@@ -4,6 +4,8 @@ from contextvars import ContextVar
 from odoo import _, api, models
 from odoo.exceptions import AccessError
 
+from .travel_security import is_travel_manager_or_admin
+
 
 _travel_attachment_audit_suppressed = ContextVar(
     "travel_umroh_attachment_audit_suppressed", default=False
@@ -43,7 +45,7 @@ class IrAttachment(models.Model):
 
     @api.model
     def _travel_check_verified_document_mutation(self, values, attachment=None):
-        if self.env.user.has_group("travel_umroh.group_travel_manager"):
+        if is_travel_manager_or_admin(self.env):
             return
         jamaah = self._travel_document_jamaah(values, attachment=attachment)
         if jamaah.filtered(lambda record: record.document_status == "verified"):
@@ -72,7 +74,12 @@ class IrAttachment(models.Model):
                 if field_name in field_labels
             )
         )
-        for record in jamaah.with_user(self.env.user):
+        audit_records = (
+            jamaah
+            if self.env.is_admin()
+            else jamaah.with_user(self.env.user)
+        )
+        for record in audit_records:
             record.message_post(
                 body=_(
                     "Lampiran dokumen Jamaah terverifikasi dikoreksi oleh "
@@ -115,7 +122,8 @@ class IrAttachment(models.Model):
             audit_fields.update(
                 {attachment.res_field, values.get("res_field")}
             )
-        result = super().write(values)
+        write_records = self.sudo() if self.env.is_admin() else self
+        result = super(IrAttachment, write_records).write(values)
         operation = (
             _("dipindahkan")
             if {"res_model", "res_id", "res_field"}.intersection(values)
@@ -135,7 +143,8 @@ class IrAttachment(models.Model):
                 {}, attachment=attachment
             ).filtered(lambda record: record.document_status == "verified")
             audit_fields.add(attachment.res_field)
-        result = super().unlink()
+        unlink_records = self.sudo() if self.env.is_admin() else self
+        result = super(IrAttachment, unlink_records).unlink()
         self._travel_post_verified_document_audit(
             audit_jamaah, audit_fields, _("dihapus")
         )

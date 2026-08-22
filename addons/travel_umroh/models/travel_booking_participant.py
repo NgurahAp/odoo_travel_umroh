@@ -1,6 +1,8 @@
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
 
+from .travel_security import is_travel_manager_or_admin
+
 
 class TravelBookingParticipant(models.Model):
     _name = "travel.booking.participant"
@@ -201,9 +203,7 @@ class TravelBookingParticipant(models.Model):
                     "dan tidak dapat diubah manual."
                 )
             )
-        is_manager = self.env.user.has_group(
-            "travel_umroh.group_travel_manager"
-        )
+        is_manager = is_travel_manager_or_admin(self.env)
         for participant in self:
             self._ensure_order_mutation_allowed(participant.order_id)
         if "unit_price" in values and not is_manager:
@@ -222,17 +222,18 @@ class TravelBookingParticipant(models.Model):
             for participant in self
         }
 
-        result = super().write(values)
+        write_records = self.sudo() if self.env.is_admin() else self
+        result = super(TravelBookingParticipant, write_records).write(values)
         if "unit_price" in values:
-            self._sync_sale_line()
+            write_records._sync_sale_line()
         elif "room_type" in values:
-            self._refresh_from_departure_price()
+            write_records._refresh_from_departure_price()
         elif "jamaah_id" in values:
-            self._sync_sale_line()
+            write_records._sync_sale_line()
 
         audited_fields = {"jamaah_id", "room_type", "unit_price"}
         if audited_fields.intersection(values):
-            for participant in self:
+            for participant in write_records:
                 previous = old_values[participant.id]
                 if previous["confirmed"] or "unit_price" in values:
                     operation_label = (
@@ -258,9 +259,7 @@ class TravelBookingParticipant(models.Model):
 
     @api.depends_context("uid")
     def _compute_can_override_price(self):
-        is_manager = self.env.user.has_group(
-            "travel_umroh.group_travel_manager"
-        )
+        is_manager = is_travel_manager_or_admin(self.env)
         for participant in self:
             participant.can_override_price = is_manager
 
@@ -275,8 +274,9 @@ class TravelBookingParticipant(models.Model):
                     "Buka kunci terlebih dahulu."
                 )
             )
-        if order.state not in ("draft", "sent") and not self.env.user.has_group(
-            "travel_umroh.group_travel_manager"
+        if (
+            order.state not in ("draft", "sent")
+            and not is_travel_manager_or_admin(self.env)
         ):
             raise AccessError(
                 _(

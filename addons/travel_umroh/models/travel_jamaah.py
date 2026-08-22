@@ -4,6 +4,7 @@ from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
 
 from .ir_attachment import suppress_travel_attachment_audit
+from .travel_security import is_travel_manager_or_admin
 
 
 class TravelJamaah(models.Model):
@@ -157,9 +158,7 @@ class TravelJamaah(models.Model):
         if (
             verified_records
             and changed_profile_fields
-            and not self.env.user.has_group(
-                "travel_umroh.group_travel_manager"
-            )
+            and not is_travel_manager_or_admin(self.env)
         ):
             raise AccessError(
                 _(
@@ -168,14 +167,20 @@ class TravelJamaah(models.Model):
                 )
             )
         self._normalize_identity_values(values)
+        write_records = self.sudo() if self.env.is_admin() else self
         with suppress_travel_attachment_audit():
-            result = super().write(values)
+            result = super(TravelJamaah, write_records).write(values)
         if verified_records and changed_profile_fields:
             field_labels = ", ".join(
                 self._fields[field_name].string
                 for field_name in sorted(changed_profile_fields)
             )
-            for jamaah in verified_records:
+            audit_records = (
+                verified_records.sudo()
+                if self.env.is_admin()
+                else verified_records
+            )
+            for jamaah in audit_records:
                 jamaah.message_post(
                     body=_(
                         "Data Jamaah terverifikasi dikoreksi oleh "
@@ -216,7 +221,7 @@ class TravelJamaah(models.Model):
         return True
 
     def action_verify_documents(self):
-        if not self.env.user.has_group("travel_umroh.group_travel_manager"):
+        if not is_travel_manager_or_admin(self.env):
             raise AccessError(
                 _("Hanya Manager Travel Umroh yang dapat memverifikasi dokumen.")
             )
@@ -225,14 +230,17 @@ class TravelJamaah(models.Model):
                 raise UserError(
                     _("Hanya dokumen yang menunggu verifikasi yang dapat diverifikasi.")
                 )
-            super(TravelJamaah, jamaah).write(
+            write_record = (
+                jamaah.sudo() if self.env.is_admin() else jamaah
+            )
+            super(TravelJamaah, write_record).write(
                 {
                     "document_status": "verified",
                     "verified_by": self.env.user.id,
                     "verified_at": fields.Datetime.now(),
                 }
             )
-            jamaah.message_post(
+            write_record.message_post(
                 body=_(
                     "Dokumen jamaah diverifikasi oleh %(user)s.",
                     user=self.env.user.display_name,

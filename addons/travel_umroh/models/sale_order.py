@@ -4,6 +4,8 @@ from contextvars import ContextVar
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
 
+from .travel_security import is_travel_manager_or_admin
+
 
 _travel_state_transition = ContextVar(
     "travel_umroh_sale_state_transition", default=False
@@ -208,9 +210,7 @@ class SaleOrder(models.Model):
     @api.depends("state", "locked")
     @api.depends_context("uid")
     def _compute_travel_edit_helpers(self):
-        is_manager = self.env.user.has_group(
-            "travel_umroh.group_travel_manager"
-        )
+        is_manager = is_travel_manager_or_admin(self.env)
         can_create_invoice = self.env.is_admin() or self.env.user.has_group(
             "travel_umroh.group_travel_finance"
         )

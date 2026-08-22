@@ -1,6 +1,8 @@
 from odoo import _, models
 from odoo.exceptions import AccessError
 
+from .travel_security import is_travel_manager_or_admin
+
 
 class ResPartner(models.Model):
     _inherit = "res.partner"
@@ -34,9 +36,7 @@ class ResPartner(models.Model):
             if (
                 verified_jamaah
                 and not trusted_signup_metadata_write
-                and not self.env.user.has_group(
-                    "travel_umroh.group_travel_manager"
-                )
+                and not is_travel_manager_or_admin(self.env)
             ):
                 raise AccessError(
                     _(
@@ -52,7 +52,12 @@ class ResPartner(models.Model):
                 for field_name in sorted(changed_fields)
                 if field_name in self._fields
             )
-            for jamaah in verified_jamaah.with_user(self.env.user):
+            audit_records = (
+                verified_jamaah
+                if self.env.is_admin()
+                else verified_jamaah.with_user(self.env.user)
+            )
+            for jamaah in audit_records:
                 jamaah.message_post(
                     body=_(
                         "Kontak Jamaah terverifikasi dikoreksi oleh %(user)s. "

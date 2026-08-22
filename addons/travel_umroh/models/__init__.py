@@ -1,3 +1,4 @@
+from . import travel_security
 from . import ir_attachment
 from . import account_move
 from . import account_move_line
