@@ -1,0 +1,4 @@
+DOKUMEN UJI - BUKAN KTP ASLI
+
+File ini hanya digunakan untuk menguji upload attachment modul Travel Umroh.
+Jangan menggantinya dengan data identitas pelanggan nyata pada database lokal.

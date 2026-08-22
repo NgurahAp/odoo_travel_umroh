@@ -15,7 +15,7 @@ Untuk setiap langkah, simpan screenshot yang memperlihatkan breadcrumb/menu, rec
 
 | Peran | Navigasi dan input | Hasil yang diharapkan | Bukti |
 |---|---|---|---|
-| Manager | Travel Umroh → Paket; buka paket demo | Paket demo memiliki tepat tiga harga kamar: Quad, Triple, Double | Screenshot paket dan tiga harga |
+| Manager | Travel Umroh → Keberangkatan; buka keberangkatan demo dan tab Harga | Keberangkatan demo memiliki tepat tiga harga kamar: Quad, Triple, Double | Screenshot keberangkatan dan tiga harga |
 | Manager | Travel Umroh → Keberangkatan; filter paket demo | Dua keberangkatan demo terlihat, lengkap dengan penerbangan, hotel, kuota, dan status | Screenshot daftar serta masing-masing tab transport/hotel |
 | Manager | Reporting → Kapasitas Keberangkatan; pindah List, Pivot, Graph | Total, terpakai, dan sisa kuota konsisten; keberangkatan `DEMO-PAID` memakai dua kursi | Screenshot ketiga mode, terutama dua kursi terpakai |
 
@@ -78,7 +78,7 @@ Jangan mengubah `DEMO-PAID`; buat Booking baru atau duplikat sintetis agar data 
 |---|---|---|---|
 | Staff | Membuat/mengubah invoice atau register payment | Ditolak oleh akses Accounting; bukan traceback | Screenshot pesan akses |
 | Finance | Mengubah field Booking atau participant | Ditolak oleh ACL/server guard | Screenshot pesan akses |
-| Staff | Mengonfirmasi Booking dengan Jamaah belum terverifikasi sesuai tahapan yang mewajibkan verifikasi/keberangkatan | Pesan bisnis berbahasa Indonesia menjelaskan dokumen belum terverifikasi | Screenshot pesan |
+| Manager | Menjalankan Tandai Berangkat ketika Booking aktif/reserved memiliki Jamaah belum terverifikasi | Pesan bisnis berbahasa Indonesia menyebut Jamaah yang dokumennya belum terverifikasi; Confirm Booking sendiri tidak diblokir | Screenshot pesan |
 | Staff | Mengonfirmasi/membayar Booking melebihi sisa kuota | Operasi ditolak dan kapasitas tidak menjadi negatif | Screenshot pesan dan kapasitas |
 | Manager/Admin | Koreksi Jamaah atau attachment yang sudah verified | Diizinkan, perubahan diaudit di Chatter; workflow integrity tetap berlaku | Screenshot sebelum/sesudah dan audit |
 

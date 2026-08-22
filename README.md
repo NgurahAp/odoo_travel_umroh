@@ -75,10 +75,11 @@ Hasil yang diharapkan adalah tepat tiga Booking sintetis: `DEMO-DRAFT` berstatus
 - [Technical design](docs/superpowers/specs/2026-08-20-travel-umroh-odoo-18-design.md)
 - [Roadmap](docs/superpowers/plans/2026-08-20-travel-umroh-roadmap.md)
 - [Plan Phase 1](docs/superpowers/plans/2026-08-20-phase-1-foundation-master-data.md)
-- [Plan Phase 2](docs/superpowers/plans/2026-08-21-phase-2-jamaah-booking.md)
+- [Plan Phase 2](docs/superpowers/plans/2026-08-21-phase-2-jamaah-booking-quotation.md)
 - [Plan Phase 3](docs/superpowers/plans/2026-08-22-phase-3-accounting-quota-cancellation-refund.md)
 - [Plan Phase 4](docs/superpowers/plans/2026-08-22-phase-4-reporting-demo-hardening.md)
 - [Panduan demo Phase 4](docs/phase4-demo-flow.md)
+- [Panduan end-to-end dari database kosong](docs/travel-umroh-end-to-end-guide.md)
 
 ## Batas scope
 
