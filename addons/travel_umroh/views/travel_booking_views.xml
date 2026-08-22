@@ -31,6 +31,10 @@
                 <field name="travel_requires_manager_cancel" invisible="1"/>
                 <field name="departure_id" domain="[('state', '=', 'open'), ('active', '=', True), ('is_full', '=', False)]" invisible="not is_travel_booking" readonly="state not in ('draft', 'sent')" options="{'no_create': True}"/>
                 <field name="travel_package_id" invisible="not is_travel_booking" readonly="1"/>
+                <field name="travel_payment_state" widget="badge" invisible="not is_travel_booking" readonly="1"/>
+                <field name="travel_state" widget="badge" invisible="not is_travel_booking" readonly="1"/>
+                <field name="seat_reserved" invisible="not is_travel_booking" readonly="1"/>
+                <field name="seat_reserved_at" invisible="not is_travel_booking" readonly="1"/>
             </field>
             <xpath expr="//page[@name='order_lines']" position="attributes">
                 <attribute name="invisible">is_travel_booking</attribute>

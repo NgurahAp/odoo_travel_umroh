@@ -75,6 +75,16 @@ class SaleOrder(models.Model):
         compute="_compute_travel_payment_state",
         readonly=True,
     )
+    travel_state = fields.Selection(
+        [
+            ("registered", "Terdaftar"),
+            ("departed", "Berangkat"),
+            ("done", "Selesai"),
+        ],
+        string="Status Perjalanan",
+        compute="_compute_travel_state",
+        readonly=True,
+    )
     seat_reserved = fields.Boolean(
         string="Kursi Direservasi",
         default=False,
@@ -104,6 +114,18 @@ class SaleOrder(models.Model):
     def _compute_participant_count(self):
         for order in self:
             order.participant_count = len(order.participant_ids)
+
+    @api.depends("is_travel_booking", "departure_id.state")
+    def _compute_travel_state(self):
+        for order in self:
+            if not order.is_travel_booking:
+                order.travel_state = False
+            elif order.departure_id.state == "departed":
+                order.travel_state = "departed"
+            elif order.departure_id.state == "done":
+                order.travel_state = "done"
+            else:
+                order.travel_state = "registered"
 
     @api.depends(
         "is_travel_booking",
@@ -211,6 +233,7 @@ class SaleOrder(models.Model):
     def write(self, values):
         protected_phase_three_fields = {
             "travel_payment_state",
+            "travel_state",
             "seat_reserved",
             "seat_reserved_at",
             "travel_requires_manager_cancel",

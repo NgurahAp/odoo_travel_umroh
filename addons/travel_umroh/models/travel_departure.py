@@ -1,5 +1,5 @@
 from odoo import _, api, fields, models
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import AccessError, UserError, ValidationError
 
 
 class TravelDeparture(models.Model):
@@ -222,6 +222,70 @@ class TravelDeparture(models.Model):
                     )
                 )
         super(TravelDeparture, self).write({"state": "open"})
+        return True
+
+    def _check_travel_manager_access(self):
+        if not (
+            self.env.is_admin()
+            or self.env.user.has_group(
+                "travel_umroh.group_travel_manager"
+            )
+        ):
+            raise AccessError(
+                _(
+                    "Hanya Manager Travel Umroh yang dapat mengubah "
+                    "siklus keberangkatan."
+                )
+            )
+
+    def _reserved_active_participants(self):
+        self.ensure_one()
+        return self.booking_ids.filtered(
+            lambda booking: booking.state == "sale"
+            and booking.seat_reserved
+        ).participant_ids
+
+    def action_depart(self):
+        self._check_travel_manager_access()
+        for departure in self:
+            if departure.state != "open":
+                raise UserError(
+                    _(
+                        "Hanya keberangkatan berstatus Dibuka yang dapat "
+                        "ditandai Berangkat."
+                    )
+                )
+            incomplete_jamaah = (
+                departure._reserved_active_participants()
+                .jamaah_id.filtered(
+                    lambda jamaah: jamaah.document_status != "verified"
+                )
+            )
+            if incomplete_jamaah:
+                raise UserError(
+                    _(
+                        "%(count)s Jamaah belum memiliki dokumen "
+                        "terverifikasi: %(names)s.",
+                        count=len(incomplete_jamaah),
+                        names=", ".join(
+                            incomplete_jamaah.mapped("display_name")
+                        ),
+                    )
+                )
+        super(TravelDeparture, self).write({"state": "departed"})
+        return True
+
+    def action_done(self):
+        self._check_travel_manager_access()
+        for departure in self:
+            if departure.state != "departed":
+                raise UserError(
+                    _(
+                        "Hanya keberangkatan berstatus Berangkat yang dapat "
+                        "ditandai Selesai."
+                    )
+                )
+        super(TravelDeparture, self).write({"state": "done"})
         return True
 
     def _get_out_of_range_accommodations(self):

@@ -10,6 +10,9 @@
                 <field name="departure_date"/>
                 <field name="return_date"/>
                 <field name="quota"/>
+                <field name="reserved_seats"/>
+                <field name="remaining_seats"/>
+                <field name="is_full" widget="boolean_toggle"/>
                 <field name="currency_id"/>
                 <field name="state" widget="badge"/>
                 <field name="active" optional="hide"/>
@@ -24,6 +27,8 @@
             <form string="Keberangkatan Umroh">
                 <header>
                     <button name="action_open" type="object" string="Buka Keberangkatan" class="btn-primary" groups="travel_umroh.group_travel_manager" invisible="state != 'draft'"/>
+                    <button name="action_depart" type="object" string="Tandai Berangkat" class="btn-primary" groups="travel_umroh.group_travel_manager" invisible="state != 'open'"/>
+                    <button name="action_done" type="object" string="Tandai Selesai" class="btn-primary" groups="travel_umroh.group_travel_manager" invisible="state != 'departed'"/>
                     <button name="action_cancel" type="object" string="Batalkan" groups="travel_umroh.group_travel_manager" invisible="state not in ('draft', 'open')"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,open,departed,done,cancelled"/>
                 </header>
@@ -45,6 +50,9 @@
                         </group>
                         <group>
                             <field name="quota"/>
+                            <field name="reserved_seats" readonly="1"/>
+                            <field name="remaining_seats" readonly="1"/>
+                            <field name="is_full" readonly="1"/>
                             <field name="company_id" options="{'no_create': True}"/>
                             <field name="currency_id" readonly="1" options="{'no_create': True}"/>
                             <field name="active"/>
@@ -94,6 +102,9 @@
                                     <field name="amount_total"/>
                                     <field name="currency_id" column_invisible="1"/>
                                     <field name="user_id"/>
+                                    <field name="travel_payment_state" widget="badge"/>
+                                    <field name="travel_state" widget="badge"/>
+                                    <field name="seat_reserved"/>
                                     <field name="state" widget="badge"/>
                                 </list>
                             </field>
