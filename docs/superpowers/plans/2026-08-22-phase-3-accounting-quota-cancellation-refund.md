@@ -1300,3 +1300,26 @@ The standard `/travel_umroh` clean-install and upgrade suites intentionally omit
 the `database_breaking` test. It is always run separately at the checkpoint, as
 shown above, to keep the ordinary suite transaction-safe while retaining real
 PostgreSQL concurrency coverage.
+
+### Manual-validation correction — 2026-08-22
+
+Manual testing revealed that the persistent `localhost:8069` container still
+mounted the Phase 2 `main` checkout while Phase 3 was isolated in its worktree.
+That stale runtime rejected Finance DP creation through the Phase 2 participant
+line guard. Before integrating Phase 3, a role-aware, read-only
+`can_create_travel_invoice` UI helper was added so the standard Create Invoice
+button is hidden only for Staff on Travel bookings; ordinary Sales Orders remain
+unchanged and the server-side Staff denial remains authoritative.
+
+The correction was developed with a failing view/role regression first. Current
+source verification then reported:
+
+- focused Phase 3 view and accounting-security suite: 12 post-tests / 16 Odoo
+  test stats, 0 failed, 0 errors;
+- full module upgrade suite: 168 post-tests / 200 Odoo test stats, 0 failed,
+  0 errors;
+- clean install on new `travel_umroh_phase3_acceptance_03`: 168 post-tests /
+  200 Odoo test stats, 0 failed, 0 errors, module
+  `installed|18.0.3.0.0`;
+- dedicated `database_breaking` concurrency proof: 1 post-test / 3 Odoo test
+  stats, 0 failed, 0 errors.

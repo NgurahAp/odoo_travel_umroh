@@ -109,6 +109,9 @@ class SaleOrder(models.Model):
     can_override_travel_price = fields.Boolean(
         compute="_compute_travel_edit_helpers"
     )
+    can_create_travel_invoice = fields.Boolean(
+        compute="_compute_travel_edit_helpers"
+    )
 
     @api.depends("participant_ids")
     def _compute_participant_count(self):
@@ -204,12 +207,16 @@ class SaleOrder(models.Model):
         is_manager = self.env.user.has_group(
             "travel_umroh.group_travel_manager"
         )
+        can_create_invoice = self.env.is_admin() or self.env.user.has_group(
+            "travel_umroh.group_travel_finance"
+        )
         for order in self:
             order.can_edit_travel_participants = (
                 not order.locked
                 and (order.state in ("draft", "sent") or is_manager)
             )
             order.can_override_travel_price = is_manager
+            order.can_create_travel_invoice = can_create_invoice
 
     @api.model_create_multi
     def create(self, vals_list):

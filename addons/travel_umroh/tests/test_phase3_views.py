@@ -63,6 +63,31 @@ class TestPhaseThreeViews(TravelAccountingCase):
         with self.assertRaises(AccessError):
             staff_wizard.create_invoices()
 
+    def test_create_invoice_is_hidden_from_staff_only_for_travel_booking(self):
+        self.assertIn("can_create_travel_invoice", self.env["sale.order"]._fields)
+        self.assertFalse(
+            self.env["sale.order"].with_user(self.staff).new(
+                {"is_travel_booking": True}
+            ).can_create_travel_invoice
+        )
+        for user in (self.finance, self.manager):
+            with self.subTest(user=user.login):
+                self.assertTrue(
+                    self.env["sale.order"].with_user(user).new(
+                        {"is_travel_booking": True}
+                    ).can_create_travel_invoice
+                )
+
+        root = self._composed_sale_form(self.staff)
+        create_invoice_buttons = root.xpath("//button[@id='create_invoice']")
+        self.assertTrue(create_invoice_buttons)
+        for button in create_invoice_buttons:
+            self.assertIn(
+                "is_travel_booking and not can_create_travel_invoice",
+                button.get("invisible", ""),
+            )
+        self.assertTrue(root.xpath("//field[@name='can_create_travel_invoice']"))
+
     def test_booking_view_has_manager_cancel_and_full_departure_domain(self):
         root = etree.fromstring(
             self.env.ref(

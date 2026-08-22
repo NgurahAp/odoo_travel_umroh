@@ -12,6 +12,9 @@
             <xpath expr="//header/button[@name='action_cancel']" position="attributes">
                 <attribute name="invisible" add="is_travel_booking and travel_requires_manager_cancel" separator=" or "/>
             </xpath>
+            <xpath expr="//header/button[@id='create_invoice']" position="attributes">
+                <attribute name="invisible" add="is_travel_booking and not can_create_travel_invoice" separator=" or "/>
+            </xpath>
             <field name="partner_id" position="attributes">
                 <attribute name="invisible">is_travel_booking</attribute>
             </field>
@@ -28,6 +31,7 @@
             <field name="partner_id" position="after">
                 <field name="can_edit_travel_participants" invisible="1"/>
                 <field name="can_override_travel_price" invisible="1"/>
+                <field name="can_create_travel_invoice" invisible="1"/>
                 <field name="travel_requires_manager_cancel" invisible="1"/>
                 <field name="departure_id" domain="[('state', '=', 'open'), ('active', '=', True), ('is_full', '=', False)]" invisible="not is_travel_booking" readonly="state not in ('draft', 'sent')" options="{'no_create': True}"/>
                 <field name="travel_package_id" invisible="not is_travel_booking" readonly="1"/>
