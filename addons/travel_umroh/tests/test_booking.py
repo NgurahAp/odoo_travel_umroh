@@ -412,8 +412,10 @@ class TestTravelBooking(TravelBookingCase):
 
         self.assertEqual(order.state, "sale")
         self.assertEqual(self.departure.quota, quota_before)
-        self.assertNotIn("seat_reserved", order._fields)
-        self.assertNotIn("reserved_seats", self.departure._fields)
+        self.assertFalse(order.seat_reserved)
+        self.assertFalse(order.seat_reserved_at)
+        self.assertEqual(self.departure.reserved_seats, 0)
+        self.assertEqual(self.departure.remaining_seats, quota_before)
 
     def test_confirmed_order_cannot_refresh_snapshot_or_change_departure(self):
         order = self._create_order()

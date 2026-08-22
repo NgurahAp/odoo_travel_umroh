@@ -8,5 +8,6 @@ from . import test_package
 from . import test_phase2_hardening
 from . import test_phase3_security
 from . import test_phase3_accounting
+from . import test_phase3_quota
 from . import test_security
 from . import test_views

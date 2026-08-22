@@ -63,6 +63,19 @@ class SaleOrder(models.Model):
         compute="_compute_travel_payment_state",
         readonly=True,
     )
+    seat_reserved = fields.Boolean(
+        string="Kursi Direservasi",
+        default=False,
+        readonly=True,
+        copy=False,
+        tracking=True,
+    )
+    seat_reserved_at = fields.Datetime(
+        string="Waktu Reservasi Kursi",
+        readonly=True,
+        copy=False,
+        tracking=True,
+    )
     can_edit_travel_participants = fields.Boolean(
         compute="_compute_travel_edit_helpers"
     )
@@ -165,7 +178,11 @@ class SaleOrder(models.Model):
         return super().create(vals_list)
 
     def write(self, values):
-        protected_phase_three_fields = {"travel_payment_state"}
+        protected_phase_three_fields = {
+            "travel_payment_state",
+            "seat_reserved",
+            "seat_reserved_at",
+        }
         if protected_phase_three_fields.intersection(values):
             raise UserError(
                 _(
@@ -271,6 +288,78 @@ class SaleOrder(models.Model):
             and user.has_group("travel_umroh.group_travel_finance")
             and not user.has_group("travel_umroh.group_travel_staff")
         )
+
+    def _travel_reserve_seats(self):
+        self.ensure_one()
+        if (
+            not self.is_travel_booking
+            or self.state != "sale"
+            or not self.departure_id
+            or not self.participant_ids
+        ):
+            raise UserError(
+                _(
+                    "Reservasi kursi hanya tersedia untuk Booking Travel "
+                    "terkonfirmasi yang memiliki participant."
+                )
+            )
+        if self.seat_reserved:
+            return False
+
+        self.env["travel.departure"].flush_model(["quota"])
+        self.env["sale.order"].flush_model(
+            ["departure_id", "seat_reserved", "state"]
+        )
+        self.env["travel.booking.participant"].flush_model(["order_id"])
+        self.env.cr.execute(
+            "SELECT id FROM travel_departure WHERE id = %s FOR UPDATE",
+            [self.departure_id.id],
+        )
+        self.invalidate_recordset(["seat_reserved"])
+        if self.seat_reserved:
+            return False
+
+        self.env.cr.execute(
+            """
+                SELECT COUNT(participant.id)
+                  FROM travel_booking_participant AS participant
+                  JOIN sale_order AS booking
+                    ON booking.id = participant.order_id
+                 WHERE booking.departure_id = %s
+                   AND booking.seat_reserved = TRUE
+                   AND booking.state != 'cancel'
+            """,
+            [self.departure_id.id],
+        )
+        current_usage = self.env.cr.fetchone()[0]
+        needed = len(self.participant_ids)
+        available = self.departure_id.quota - current_usage
+        if needed > available:
+            raise UserError(
+                _(
+                    "Keberangkatan %(departure)s tidak memiliki kuota cukup: "
+                    "tersedia=%(available)s, dibutuhkan=%(needed)s.",
+                    departure=self.departure_id.display_name,
+                    available=available,
+                    needed=needed,
+                )
+            )
+
+        super(SaleOrder, self).write(
+            {
+                "seat_reserved": True,
+                "seat_reserved_at": fields.Datetime.now(),
+            }
+        )
+        self.message_post(
+            body=_(
+                "%(count)s kursi direservasi pada keberangkatan %(departure)s "
+                "setelah uang muka lunas.",
+                count=needed,
+                departure=self.departure_id.display_name,
+            )
+        )
+        return True
 
     def action_confirm(self):
         for order in self.filtered("is_travel_booking"):

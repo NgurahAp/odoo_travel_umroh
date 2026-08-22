@@ -80,6 +80,21 @@ class TravelDeparture(models.Model):
     booking_count = fields.Integer(
         string="Jumlah Booking", compute="_compute_booking_count"
     )
+    reserved_seats = fields.Integer(
+        string="Kursi Direservasi",
+        compute="_compute_seat_capacity",
+        store=True,
+    )
+    remaining_seats = fields.Integer(
+        string="Sisa Kursi",
+        compute="_compute_seat_capacity",
+        store=True,
+    )
+    is_full = fields.Boolean(
+        string="Kuota Penuh",
+        compute="_compute_seat_capacity",
+        store=True,
+    )
     active = fields.Boolean(string="Aktif", default=True)
 
     @api.depends("package_id.code", "departure_date")
@@ -99,6 +114,26 @@ class TravelDeparture(models.Model):
     def _compute_booking_count(self):
         for departure in self:
             departure.booking_count = len(departure.booking_ids)
+
+    @api.depends(
+        "quota",
+        "booking_ids.seat_reserved",
+        "booking_ids.state",
+        "booking_ids.participant_ids",
+    )
+    def _compute_seat_capacity(self):
+        for departure in self:
+            reserved_bookings = departure.booking_ids.filtered(
+                lambda booking: booking.seat_reserved
+                and booking.state != "cancel"
+            )
+            departure.reserved_seats = sum(
+                len(booking.participant_ids) for booking in reserved_bookings
+            )
+            departure.remaining_seats = (
+                departure.quota - departure.reserved_seats
+            )
+            departure.is_full = departure.remaining_seats <= 0
 
     def action_view_bookings(self):
         self.ensure_one()
@@ -141,6 +176,14 @@ class TravelDeparture(models.Model):
         for departure in self:
             if departure.quota < 0:
                 raise ValidationError(_("Kuota keberangkatan tidak boleh negatif."))
+            if departure.quota < departure.reserved_seats:
+                raise ValidationError(
+                    _(
+                        "Kuota tidak boleh lebih kecil dari %(reserved)s "
+                        "kursi yang sudah direservasi.",
+                        reserved=departure.reserved_seats,
+                    )
+                )
 
     def write(self, values):
         if "state" in values:
