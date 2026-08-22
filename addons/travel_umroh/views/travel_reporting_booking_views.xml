@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_travel_booking_report_list" model="ir.ui.view">
+        <field name="name">travel.booking.report.list</field>
+        <field name="model">sale.order</field>
+        <field name="arch" type="xml">
+            <list string="Booking dan Penjualan" create="0" edit="0" delete="0">
+                <field name="name"/>
+                <field name="date_order"/>
+                <field name="partner_id"/>
+                <field name="departure_id"/>
+                <field name="travel_package_id"/>
+                <field name="participant_count" sum="Total Jamaah"/>
+                <field name="amount_total" sum="Total Penjualan"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="travel_payment_state" widget="badge"/>
+                <field name="travel_state" widget="badge"/>
+                <field name="seat_reserved"/>
+                <field name="state" widget="badge"/>
+                <field name="user_id"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_travel_booking_report_search" model="ir.ui.view">
+        <field name="name">travel.booking.report.search</field>
+        <field name="model">sale.order</field>
+        <field name="arch" type="xml">
+            <search string="Cari Booking dan Penjualan">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="departure_id"/>
+                <field name="travel_package_id"/>
+                <field name="user_id"/>
+                <separator/>
+                <filter name="quotation" string="Quotation" domain="[('state', 'in', ('draft', 'sent'))]"/>
+                <filter name="confirmed" string="Terkonfirmasi" domain="[('state', 'in', ('sale', 'done'))]"/>
+                <filter name="cancelled" string="Dibatalkan" domain="[('state', '=', 'cancel')]"/>
+                <separator/>
+                <filter name="unpaid" string="Belum Bayar" domain="[('travel_payment_state', '=', 'unpaid')]"/>
+                <filter name="dp" string="DP" domain="[('travel_payment_state', '=', 'dp')]"/>
+                <filter name="paid" string="Lunas" domain="[('travel_payment_state', '=', 'paid')]"/>
+                <filter name="refunded" string="Refunded" domain="[('travel_payment_state', '=', 'refunded')]"/>
+                <filter name="reserved_only" string="Kursi Direservasi" domain="[('seat_reserved', '=', True)]"/>
+                <group expand="0" string="Kelompokkan">
+                    <filter name="group_package" string="Paket" context="{'group_by': 'travel_package_id'}"/>
+                    <filter name="group_departure" string="Keberangkatan" context="{'group_by': 'departure_id'}"/>
+                    <filter name="group_payment" string="Status Pembayaran" context="{'group_by': 'travel_payment_state'}"/>
+                    <filter name="group_sales_state" string="Status Sales" context="{'group_by': 'state'}"/>
+                    <filter name="group_salesperson" string="Salesperson" context="{'group_by': 'user_id'}"/>
+                    <filter name="group_order_month" string="Bulan Booking" context="{'group_by': 'date_order:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_travel_booking_report_pivot" model="ir.ui.view">
+        <field name="name">travel.booking.report.pivot</field>
+        <field name="model">sale.order</field>
+        <field name="arch" type="xml">
+            <pivot string="Analisis Booking dan Penjualan">
+                <field name="travel_package_id" type="row"/>
+                <field name="departure_id" type="row"/>
+                <field name="travel_payment_state" type="row"/>
+                <field name="date_order" interval="month" type="col"/>
+                <field name="amount_total" type="measure"/>
+                <field name="participant_count" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_travel_booking_report_graph" model="ir.ui.view">
+        <field name="name">travel.booking.report.graph</field>
+        <field name="model">sale.order</field>
+        <field name="arch" type="xml">
+            <graph string="Penjualan per Keberangkatan" type="bar">
+                <field name="departure_id"/>
+                <field name="amount_total" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="action_travel_booking_report" model="ir.actions.act_window">
+        <field name="name">Booking dan Penjualan</field>
+        <field name="res_model">sale.order</field>
+        <field name="view_mode">list,pivot,graph,form</field>
+        <field name="domain">[('is_travel_booking', '=', True)]</field>
+        <field name="search_view_id" ref="view_travel_booking_report_search"/>
+    </record>
+
+    <record id="action_travel_booking_report_list" model="ir.actions.act_window.view">
+        <field name="sequence" eval="1"/>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="view_travel_booking_report_list"/>
+        <field name="act_window_id" ref="action_travel_booking_report"/>
+    </record>
+    <record id="action_travel_booking_report_pivot" model="ir.actions.act_window.view">
+        <field name="sequence" eval="2"/>
+        <field name="view_mode">pivot</field>
+        <field name="view_id" ref="view_travel_booking_report_pivot"/>
+        <field name="act_window_id" ref="action_travel_booking_report"/>
+    </record>
+    <record id="action_travel_booking_report_graph" model="ir.actions.act_window.view">
+        <field name="sequence" eval="3"/>
+        <field name="view_mode">graph</field>
+        <field name="view_id" ref="view_travel_booking_report_graph"/>
+        <field name="act_window_id" ref="action_travel_booking_report"/>
+    </record>
+    <record id="action_travel_booking_report_form" model="ir.actions.act_window.view">
+        <field name="sequence" eval="4"/>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="sale.view_order_form"/>
+        <field name="act_window_id" ref="action_travel_booking_report"/>
+    </record>
+</odoo>

@@ -1,10 +1,16 @@
+from lxml import etree
+
 from odoo.tests import tagged
+from odoo.tools.safe_eval import safe_eval
 
 from .common import TravelAccountingCase
 
 
 @tagged("post_install", "-at_install")
 class TestPhaseFourReporting(TravelAccountingCase):
+    def _view_root(self, xmlid):
+        return etree.fromstring(self.env.ref(xmlid).arch_db.encode())
+
     def test_reporting_dimensions_are_stored_without_copying_identity_data(self):
         order_fields = self.env["sale.order"]._fields
         for name in (
@@ -60,4 +66,106 @@ class TestPhaseFourReporting(TravelAccountingCase):
         self.assertEqual(
             sum(group["__count"] for group in participant_groups),
             2,
+        )
+
+    def test_booking_reporting_action_is_travel_only_and_analytical(self):
+        action = self.env.ref("travel_umroh.action_travel_booking_report")
+        self.assertEqual(action.res_model, "sale.order")
+        self.assertEqual(action.view_mode, "list,pivot,graph,form")
+        self.assertEqual(
+            safe_eval(action.domain),
+            [("is_travel_booking", "=", True)],
+        )
+
+        list_root = self._view_root(
+            "travel_umroh.view_travel_booking_report_list"
+        )
+        self.assertEqual(list_root.get("create"), "0")
+        self.assertEqual(list_root.get("edit"), "0")
+        self.assertEqual(list_root.get("delete"), "0")
+        for name in (
+            "name",
+            "date_order",
+            "partner_id",
+            "departure_id",
+            "travel_package_id",
+            "participant_count",
+            "amount_total",
+            "travel_payment_state",
+            "travel_state",
+            "seat_reserved",
+            "state",
+            "user_id",
+        ):
+            self.assertTrue(list_root.xpath(f"//field[@name='{name}']"), name)
+
+        pivot = self._view_root(
+            "travel_umroh.view_travel_booking_report_pivot"
+        )
+        for measure in ("amount_total", "participant_count"):
+            self.assertTrue(
+                pivot.xpath(
+                    f"//field[@name='{measure}' and @type='measure']"
+                ),
+                measure,
+            )
+        for dimension in (
+            "departure_id",
+            "travel_package_id",
+            "travel_payment_state",
+        ):
+            self.assertTrue(
+                pivot.xpath(f"//field[@name='{dimension}']"),
+                dimension,
+            )
+
+        search = self._view_root(
+            "travel_umroh.view_travel_booking_report_search"
+        )
+        for filter_name in (
+            "quotation",
+            "confirmed",
+            "cancelled",
+            "unpaid",
+            "dp",
+            "paid",
+            "refunded",
+            "reserved_only",
+            "group_package",
+            "group_departure",
+            "group_payment",
+            "group_sales_state",
+            "group_salesperson",
+            "group_order_month",
+        ):
+            self.assertTrue(
+                search.xpath(f"//filter[@name='{filter_name}']"),
+                filter_name,
+            )
+
+    def test_reporting_menus_keep_operational_and_receivable_roles_separate(self):
+        staff = self.env.ref("travel_umroh.group_travel_staff")
+        finance = self.env.ref("travel_umroh.group_travel_finance")
+        manager = self.env.ref("travel_umroh.group_travel_manager")
+
+        reporting_menu = self.env.ref("travel_umroh.menu_travel_reporting")
+        booking_menu = self.env.ref(
+            "travel_umroh.menu_travel_booking_report"
+        )
+        for menu in (reporting_menu, booking_menu):
+            self.assertEqual(
+                set(menu.groups_id.ids),
+                {staff.id, finance.id, manager.id},
+            )
+
+        receivable_menu = self.env.ref(
+            "travel_umroh.menu_travel_receivable_report"
+        )
+        self.assertEqual(
+            set(receivable_menu.groups_id.ids),
+            {finance.id, manager.id},
+        )
+        self.assertEqual(
+            receivable_menu.action,
+            self.env.ref("account.action_move_out_invoice_type"),
         )

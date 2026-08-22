@@ -7,6 +7,10 @@
     <menuitem id="menu_travel_package" name="Paket" parent="menu_travel_root" action="action_travel_package" sequence="30"/>
     <menuitem id="menu_travel_departure" name="Keberangkatan" parent="menu_travel_root" action="action_travel_departure" sequence="40"/>
 
+    <menuitem id="menu_travel_reporting" name="Laporan" parent="menu_travel_root" sequence="80" groups="travel_umroh.group_travel_staff,travel_umroh.group_travel_finance,travel_umroh.group_travel_manager"/>
+    <menuitem id="menu_travel_booking_report" name="Booking &amp; Penjualan" parent="menu_travel_reporting" action="action_travel_booking_report" sequence="10" groups="travel_umroh.group_travel_staff,travel_umroh.group_travel_finance,travel_umroh.group_travel_manager"/>
+    <menuitem id="menu_travel_receivable_report" name="Sisa Tagihan" parent="menu_travel_reporting" action="account.action_move_out_invoice_type" sequence="50" groups="travel_umroh.group_travel_finance,travel_umroh.group_travel_manager"/>
+
     <menuitem id="menu_travel_configuration" name="Konfigurasi" parent="menu_travel_root" sequence="90" groups="travel_umroh.group_travel_manager"/>
     <menuitem id="menu_travel_airline" name="Maskapai" parent="menu_travel_configuration" action="action_travel_airline" sequence="10" groups="travel_umroh.group_travel_manager"/>
     <menuitem id="menu_travel_airport" name="Bandara" parent="menu_travel_configuration" action="action_travel_airport" sequence="20" groups="travel_umroh.group_travel_manager"/>
