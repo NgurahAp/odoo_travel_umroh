@@ -34,6 +34,22 @@ class TestPhaseThreeAccountingSecurity(TravelAccountingCase):
         with self.assertRaises(AccessError):
             wizard.create_invoices()
 
+    def test_staff_cannot_reverse_or_register_accounting_payments(self):
+        order = self._confirmed_booking("SEC-REFUND")
+        invoice = self._create_downpayment_invoice(order)
+        invoice.with_user(self.finance).action_post()
+
+        for model_name in (
+            "account.move.reversal",
+            "account.payment.register",
+        ):
+            with self.subTest(model=model_name), self.assertRaises(AccessError):
+                self.env[model_name].with_user(self.staff).check_access(
+                    "create"
+                )
+            self.env[model_name].with_user(self.finance).check_access("create")
+            self.env[model_name].with_user(self.manager).check_access("create")
+
     def test_finance_cannot_mutate_booking_despite_standard_account_acl(self):
         order = self._confirmed_booking("SEC-FIN")
         line = order.order_line.filtered(lambda item: not item.display_type)

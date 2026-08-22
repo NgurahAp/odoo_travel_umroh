@@ -43,6 +43,19 @@ class TestPhaseThreeDepartureWorkflow(TravelAccountingCase):
     def test_staff_and_finance_cannot_change_departure_lifecycle(self):
         for user in (self.staff, self.finance):
             with self.subTest(user=user.login):
+                draft_departure = self.env["travel.departure"].sudo().create(
+                    {
+                        "package_id": self.package.id,
+                        "departure_date": "2029-01-01",
+                        "return_date": "2029-01-10",
+                        "quota": 1,
+                        "company_id": self.env.company.id,
+                    }
+                )
+                with self.assertRaises(AccessError):
+                    draft_departure.with_user(user).action_open()
+                with self.assertRaises(AccessError):
+                    self.departure.with_user(user).action_cancel()
                 with self.assertRaises(AccessError):
                     self.departure.with_user(user).action_depart()
                 with self.assertRaises(AccessError):

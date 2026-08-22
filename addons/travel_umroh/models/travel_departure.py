@@ -193,6 +193,7 @@ class TravelDeparture(models.Model):
         return super().write(values)
 
     def action_open(self):
+        self._check_travel_manager_access()
         required_room_types = {"quad", "triple", "double"}
         for departure in self:
             if departure.state != "draft":
@@ -298,6 +299,7 @@ class TravelDeparture(models.Model):
         )
 
     def action_cancel(self):
+        self._check_travel_manager_access()
         for departure in self:
             if departure.state not in {"draft", "open"}:
                 raise UserError(
