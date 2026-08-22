@@ -348,6 +348,23 @@ class TestTravelBooking(TravelBookingCase):
     def test_participant_cannot_move_between_orders_or_accept_direct_price(self):
         order = self._create_order()
         other_order = self._create_order()
+        staff = self.env["res.users"].create(
+            {
+                "name": "Phase 2 Direct Price Staff",
+                "login": "phase2-direct-price-staff",
+                "email": "phase2-direct-price-staff@example.test",
+                "groups_id": [
+                    Command.set(
+                        [
+                            self.env.ref("base.group_user").id,
+                            self.env.ref(
+                                "travel_umroh.group_travel_staff"
+                            ).id,
+                        ]
+                    )
+                ],
+            }
+        )
         participant = self.env["travel.booking.participant"].create(
             {
                 "order_id": order.id,
@@ -358,7 +375,7 @@ class TestTravelBooking(TravelBookingCase):
         with self.assertRaises(UserError):
             participant.write({"order_id": other_order.id})
         with self.assertRaises(AccessError):
-            participant.write({"unit_price": 1})
+            participant.with_user(staff).write({"unit_price": 1})
 
     def test_spoofed_context_cannot_bypass_generated_line_guards(self):
         order = self._create_order()
