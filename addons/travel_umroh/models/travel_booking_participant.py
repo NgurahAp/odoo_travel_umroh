@@ -22,6 +22,75 @@ class TravelBookingParticipant(models.Model):
         ondelete="restrict",
         index=True,
     )
+    departure_id = fields.Many2one(
+        "travel.departure",
+        related="order_id.departure_id",
+        string="Keberangkatan",
+        store=True,
+        readonly=True,
+    )
+    travel_package_id = fields.Many2one(
+        "travel.package",
+        related="order_id.travel_package_id",
+        string="Paket",
+        store=True,
+        readonly=True,
+    )
+    booking_state = fields.Selection(
+        related="order_id.state",
+        string="Status Booking",
+        store=True,
+        readonly=True,
+    )
+    travel_payment_state = fields.Selection(
+        related="order_id.travel_payment_state",
+        string="Status Pembayaran",
+        store=True,
+        readonly=True,
+    )
+    travel_state = fields.Selection(
+        related="order_id.travel_state",
+        string="Status Perjalanan",
+        store=True,
+        readonly=True,
+    )
+    seat_reserved = fields.Boolean(
+        related="order_id.seat_reserved",
+        string="Kursi Direservasi",
+        store=True,
+        readonly=True,
+    )
+    document_status = fields.Selection(
+        related="jamaah_id.document_status",
+        string="Status Dokumen",
+        store=True,
+        readonly=True,
+    )
+    jamaah_nik = fields.Char(
+        related="jamaah_id.nik",
+        string="NIK",
+        readonly=True,
+    )
+    jamaah_phone = fields.Char(
+        related="jamaah_id.phone",
+        string="Telepon",
+        readonly=True,
+    )
+    jamaah_gender = fields.Selection(
+        related="jamaah_id.gender",
+        string="Jenis Kelamin",
+        readonly=True,
+    )
+    passport_number = fields.Char(
+        related="jamaah_id.passport_number",
+        string="Nomor Paspor",
+        readonly=True,
+    )
+    passport_expiry = fields.Date(
+        related="jamaah_id.passport_expiry",
+        string="Masa Berlaku Paspor",
+        readonly=True,
+    )
     room_type = fields.Selection(
         [
             ("quad", "Quad"),

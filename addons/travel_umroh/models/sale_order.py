@@ -62,7 +62,9 @@ class SaleOrder(models.Model):
         copy=False,
     )
     participant_count = fields.Integer(
-        string="Jumlah Participant", compute="_compute_participant_count"
+        string="Jumlah Participant",
+        compute="_compute_participant_count",
+        store=True,
     )
     travel_payment_state = fields.Selection(
         [
@@ -73,6 +75,7 @@ class SaleOrder(models.Model):
         ],
         string="Status Pembayaran Travel",
         compute="_compute_travel_payment_state",
+        store=True,
         readonly=True,
     )
     travel_state = fields.Selection(
@@ -83,6 +86,7 @@ class SaleOrder(models.Model):
         ],
         string="Status Perjalanan",
         compute="_compute_travel_state",
+        store=True,
         readonly=True,
     )
     seat_reserved = fields.Boolean(
