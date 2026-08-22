@@ -6,6 +6,32 @@ from .common import TravelAccountingCase
 
 @tagged("post_install", "-at_install")
 class TestTravelQuota(TravelAccountingCase):
+    def test_full_departure_cannot_be_selected_by_rpc(self):
+        self.departure.with_user(self.manager).write({"quota": 1})
+        first_order = self._confirmed_booking("QUOTA-FULL-RPC")
+        self._post_and_pay(self._create_downpayment_invoice(first_order))
+
+        with self.assertRaises(ValidationError):
+            self.env["sale.order"].with_user(self.staff).create(
+                {
+                    "partner_id": self.buyer.id,
+                    "user_id": self.staff.id,
+                    "is_travel_booking": True,
+                    "departure_id": self.departure.id,
+                }
+            )
+
+    def test_existing_confirmed_order_fails_only_on_reservation(self):
+        self.departure.with_user(self.manager).write({"quota": 1})
+        first_order = self._confirmed_booking("QUOTA-FIRST")
+        waiting_order = self._confirmed_booking("QUOTA-WAITING")
+        self._post_and_pay(self._create_downpayment_invoice(first_order))
+
+        self.assertEqual(waiting_order.state, "sale")
+        self.assertFalse(waiting_order.seat_reserved)
+        with self.assertRaises(UserError):
+            waiting_order._travel_reserve_seats()
+
     def test_initial_draft_and_confirmed_bookings_do_not_reserve(self):
         self.assertEqual(self.departure.reserved_seats, 0)
         self.assertEqual(self.departure.remaining_seats, self.departure.quota)
@@ -94,3 +120,10 @@ class TestTravelQuota(TravelAccountingCase):
                         "seat_reserved_at": "2027-01-01 00:00:00",
                     }
                 )
+
+    def test_booking_view_domain_excludes_full_departures(self):
+        arch = self.env.ref(
+            "travel_umroh.view_sale_order_form_travel"
+        ).arch_db
+
+        self.assertIn("('is_full', '=', False)", arch)

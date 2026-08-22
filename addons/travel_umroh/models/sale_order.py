@@ -484,6 +484,14 @@ class SaleOrder(models.Model):
                 raise ValidationError(
                     _("Pilih keberangkatan aktif yang berstatus Dibuka.")
                 )
+            if order.state in ("draft", "sent") and departure.is_full:
+                raise ValidationError(
+                    _(
+                        "Keberangkatan %(departure)s sudah penuh. Pilih "
+                        "keberangkatan lain.",
+                        departure=departure.display_name,
+                    )
+                )
             if order.company_id != departure.company_id:
                 raise ValidationError(
                     _(

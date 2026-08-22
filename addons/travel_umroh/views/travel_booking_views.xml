@@ -24,7 +24,7 @@
             <field name="partner_id" position="after">
                 <field name="can_edit_travel_participants" invisible="1"/>
                 <field name="can_override_travel_price" invisible="1"/>
-                <field name="departure_id" domain="[('state', '=', 'open'), ('active', '=', True)]" invisible="not is_travel_booking" readonly="state not in ('draft', 'sent')" options="{'no_create': True}"/>
+                <field name="departure_id" domain="[('state', '=', 'open'), ('active', '=', True), ('is_full', '=', False)]" invisible="not is_travel_booking" readonly="state not in ('draft', 'sent')" options="{'no_create': True}"/>
                 <field name="travel_package_id" invisible="not is_travel_booking" readonly="1"/>
             </field>
             <xpath expr="//page[@name='order_lines']" position="attributes">
