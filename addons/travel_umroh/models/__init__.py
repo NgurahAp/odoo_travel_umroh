@@ -1,6 +1,7 @@
 from . import ir_attachment
 from . import res_partner
 from . import res_users
+from . import sale_advance_payment_inv
 from . import sale_order
 from . import sale_order_line
 from . import travel_airline

@@ -32,3 +32,4 @@ access_travel_booking_participant_manager,travel.booking.participant.manager,mod
 access_res_partner_travel_staff,res.partner.travel.staff,base.model_res_partner,group_travel_staff,1,1,1,0
 access_sale_order_travel_finance,sale.order.travel.finance,sale.model_sale_order,group_travel_finance,1,0,0,0
 access_sale_order_line_travel_finance,sale.order.line.travel.finance,sale.model_sale_order_line,group_travel_finance,1,0,0,0
+access_sale_advance_payment_inv_travel_finance,sale.advance.payment.inv.travel.finance,sale.model_sale_advance_payment_inv,group_travel_finance,1,1,1,0

@@ -2,7 +2,7 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 
 from odoo import _, api, fields, models
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import AccessError, UserError, ValidationError
 
 
 _travel_state_transition = ContextVar(
@@ -79,6 +79,10 @@ class SaleOrder(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        if self._is_travel_finance_only():
+            raise AccessError(
+                _("Finance Travel Umroh tidak dapat membuat Sales Order.")
+            )
         for values in vals_list:
             if (
                 values.get("is_travel_booking")
@@ -93,6 +97,10 @@ class SaleOrder(models.Model):
         return super().create(vals_list)
 
     def write(self, values):
+        if self._is_travel_finance_only():
+            raise AccessError(
+                _("Finance Travel Umroh hanya dapat membaca booking.")
+            )
         if values.get("is_travel_booking") is True:
             invalid_conversions = self.filtered(
                 lambda order: not order.is_travel_booking
@@ -172,6 +180,21 @@ class SaleOrder(models.Model):
             )
             travel_orders.action_refresh_travel_prices()
         return result
+
+    def unlink(self):
+        if self._is_travel_finance_only():
+            raise AccessError(
+                _("Finance Travel Umroh tidak dapat menghapus Sales Order.")
+            )
+        return super().unlink()
+
+    def _is_travel_finance_only(self):
+        user = self.env.user
+        return (
+            not self.env.is_admin()
+            and user.has_group("travel_umroh.group_travel_finance")
+            and not user.has_group("travel_umroh.group_travel_staff")
+        )
 
     def action_confirm(self):
         for order in self.filtered("is_travel_booking"):

@@ -1,4 +1,5 @@
 from odoo import Command
+from odoo.addons.account.tests.common import AccountTestInvoicingCommon
 from odoo.tests.common import TransactionCase
 
 
@@ -60,7 +61,7 @@ class TravelBookingCase(TravelUmrohCase):
 
     @classmethod
     def _create_jamaah(cls, suffix="001", **overrides):
-        partner = cls.env["res.partner"].create(
+        partner = cls.env["res.partner"].sudo().create(
             {
                 "name": f"Synthetic Jamaah {suffix}",
                 "phone": f"+62812000{suffix}",
@@ -76,4 +77,66 @@ class TravelBookingCase(TravelUmrohCase):
             "emergency_contact_phone": "+628129990000",
         }
         values.update(overrides)
-        return cls.env["travel.jamaah"].create(values)
+        return cls.env["travel.jamaah"].sudo().create(values)
+
+
+class TravelAccountingCase(AccountTestInvoicingCommon, TravelBookingCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.departure.company_id = cls.env.company
+        cls.travel_service_product = cls.package.product_id
+        cls.travel_service_product.product_tmpl_id.property_account_income_id = (
+            cls.company_data["default_account_revenue"]
+        )
+        cls.staff = cls._create_role_user("phase3-staff", "group_travel_staff")
+        cls.finance = cls._create_role_user(
+            "phase3-finance", "group_travel_finance"
+        )
+        cls.manager = cls._create_role_user(
+            "phase3-manager", "group_travel_manager"
+        )
+
+    @classmethod
+    def _create_role_user(cls, login, group_xmlid):
+        return cls.env["res.users"].with_context(no_reset_password=True).create(
+            {
+                "name": login,
+                "login": login,
+                "email": f"{login}@example.test",
+                "company_id": cls.env.company.id,
+                "company_ids": [Command.set(cls.env.company.ids)],
+                "groups_id": [
+                    Command.set(
+                        [
+                            cls.env.ref("base.group_user").id,
+                            cls.env.ref(
+                                f"travel_umroh.{group_xmlid}"
+                            ).id,
+                        ]
+                    )
+                ],
+            }
+        )
+
+    def _confirmed_booking(self, suffix, participant_count=1):
+        order = self.env["sale.order"].with_user(self.staff).create(
+            {
+                "partner_id": self.buyer.id,
+                "user_id": self.staff.id,
+                "is_travel_booking": True,
+                "departure_id": self.departure.id,
+            }
+        )
+        for index in range(participant_count):
+            self.env["travel.booking.participant"].with_user(self.staff).create(
+                {
+                    "order_id": order.id,
+                    "jamaah_id": self._create_jamaah(
+                        f"{suffix}-{index}"
+                    ).id,
+                    "room_type": "quad",
+                }
+            )
+        order.with_user(self.staff).action_confirm()
+        return order
